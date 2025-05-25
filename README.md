@@ -58,6 +58,10 @@ A "Child Coordinator" is less clearly defined, but is one that handles navigatio
 
 oconnor.freelance@gmail.com or via github.com/horseshoe7
 
+## Acknowledgements
+
+Thank you to Tiago Henriques and his [blog post on the topic ](https://www.tiagohenriques.dev/blog/swiftui-refactor-navigation-layer-using-coordinator-pattern?utm_source=substack&utm_medium=email), which got the ball rolling for me, on which this is loosely based.
+
 ## LICENSE
 
 MIT.  Or Beerware if you prefer.  Yes, buy me a beer and don't send any lawyers after me.
