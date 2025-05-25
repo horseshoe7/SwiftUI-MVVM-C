@@ -3,13 +3,13 @@ import SwiftUI
 
 // MARK: - Navigation Types
 
-enum NavigationType {
+public enum NavigationType {
     case push
     case sheet
     case fullScreenCover
 }
 
-enum NavigationPopType {
+public enum NavigationPopType {
     case pop(last: Int)
     case sheet
     case fullScreenCover
@@ -18,7 +18,7 @@ enum NavigationPopType {
 
 // MARK: - Type-erased Coordinator
 
-protocol CoordinatorProtocol: AnyObject {
+public protocol CoordinatorProtocol: AnyObject {
     var identifier: String { get }
     func push<Route: Routable>(_ route: Route, type: NavigationType)
     func pop(_ type: NavigationPopType)
@@ -30,10 +30,10 @@ protocol CoordinatorProtocol: AnyObject {
 }
 
 
-struct AnyCoordinator {
+public struct AnyCoordinator {
     fileprivate let _coordinator: any CoordinatorProtocol
     
-    init<T: CoordinatorProtocol>(_ coordinator: T) {
+    public init<T: CoordinatorProtocol>(_ coordinator: T) {
         self._coordinator = coordinator
     }
     
@@ -69,11 +69,11 @@ struct AnyCoordinator {
 /// A type that manages both the type erased NavigationPath (yet does have type when used with .navigationDestination)
 /// and tracks a list of `AnyRoutable` that is used by the `Coordinator`.
 @Observable
-class SharedNavigationPath {
+public class SharedNavigationPath {
     
-    private(set) var routes: [AnyRoutable] = []
+    public private(set) var routes: [AnyRoutable] = []
     
-    var path: NavigationPath {
+    public var path: NavigationPath {
         didSet {
             let count = path.count
             self.routes = Array(self.routes[0..<count])
@@ -85,14 +85,14 @@ class SharedNavigationPath {
         self.path = path
     }
     
-    func append(_ routable: any Routable) {
+    public func append(_ routable: any Routable) {
         routes.append(AnyRoutable(routable))
         path.append(routable)
     }
 }
 
 @Observable
-class Coordinator<Route: Routable>: CoordinatorProtocol {
+public class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     // MARK: - Navigation State
     
@@ -103,7 +103,7 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     /// mostly for debugging.  If you need to know what routes in the `sharedPath` are managed by this Coordinator.
-    var localStack: [Route] {
+    public var localStack: [Route] {
         var routes: [Route] = [self.initialRoute]
         routes.append(
             contentsOf: sharedPath.routes.compactMap { $0.typedByRoute(as: Route.self) }
@@ -112,12 +112,17 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     /// A Value you provide that uniquely identifies this coordinator.
-    let identifier: String
+    public let identifier: String
     
     /// If this were a UINavigationController, this would be your first view controller in the stack.
-    let initialRoute: Route
-    var sheet: Route?
-    var fullscreenCover: Route?
+    public let initialRoute: Route
+    public var sheet: Route?
+    public var fullscreenCover: Route?
+    
+    // MARK: - Generic Data Storage
+    
+    /// you can use a simple dictionary to avoid having to construct your own Coordinator types just to store data.
+    public var userData: [String: Any] = [:]
     
     // MARK: - Child Coordinator Management
     
@@ -143,7 +148,7 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
     private var onFinish: ((Any?, AnyCoordinator) -> Void)?
     
     // MARK: - Initialization
-    convenience init(identifier: String, initialRoute: Route, onFinish: ((Any?, AnyCoordinator) -> Void)? = nil) {
+    public convenience init(identifier: String, initialRoute: Route, onFinish: ((Any?, AnyCoordinator) -> Void)? = nil) {
         self.init(
             identifier: identifier,
             initialRoute: initialRoute,
@@ -153,7 +158,7 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     /// Initializer for child coordinators with shared path reference
-    init(identifier: String, initialRoute: Route, sharedPath: SharedNavigationPath, onFinish: ((Any?, AnyCoordinator) -> Void)? = nil) {
+    public init(identifier: String, initialRoute: Route, sharedPath: SharedNavigationPath, onFinish: ((Any?, AnyCoordinator) -> Void)? = nil) {
         
         self.identifier = identifier
         self.sharedPath = sharedPath
@@ -165,7 +170,7 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
     // MARK: - Child Coordinator Management
     
     /// To create a standard Coordinator that manages the given `ChildRoute`.  If you need to create custom subclasses, see `buildChildCoordinator(...)`
-    func createChildCoordinator<ChildRoute: Routable>(
+    public func createChildCoordinator<ChildRoute: Routable>(
         identifier: String,
         initialRoute: ChildRoute,
         onFinish: @escaping (Any?) -> Void
@@ -197,7 +202,7 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     /// if you build your own, be sure it removes the child from the parent.  See `createChildCoordinator(...)`'s onFinish implementation for an example.
-    func buildChildCoordinator<ChildRoute: Routable, CoordinatorType: Coordinator<ChildRoute>>(
+    public func buildChildCoordinator<ChildRoute: Routable, CoordinatorType: Coordinator<ChildRoute>>(
         identifier: String,
         initialRoute: ChildRoute,
         builder: (Coordinator<Route>, SharedNavigationPath) -> CoordinatorType
@@ -219,20 +224,20 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
         return childCoordinator
     }
     
-    private func removeChildCoordinator(_ child: AnyCoordinator) {
+    public func removeChildCoordinator(_ child: AnyCoordinator) {
         childCoordinators[child.identifier] = nil
     }
     
     // MARK: - Finish Methods
     
-    func finish(with payload: Any? = nil) {
+    public func finish(with payload: Any? = nil) {
         print("[\(String(describing: Route.self))] Coordinator finishing with payload: \(String(describing: payload))")
         onFinish?(payload, AnyCoordinator(self))
     }
     
     // MARK: - Navigation Methods
     
-    func push<T: Routable>(_ route: T, type: NavigationType = .push) {
+    public func push<T: Routable>(_ route: T, type: NavigationType = .push) {
         
         switch type {
         case .push:
@@ -261,7 +266,7 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
         }
     }
     
-    func pop(_ type: NavigationPopType = .pop(last: 1)) {
+    public func pop(_ type: NavigationPopType = .pop(last: 1)) {
         
         switch type {
         case .pop(let count):
@@ -283,13 +288,13 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     /// Resets the Coordinator to the state when it began while also 'finishing' as well.  (Notifies and cleans up with the parent).
     /// Typically you'll call this on a child coordinator
-    func reset(finishingWith payload: Any? = nil) {
+    public func reset(finishingWith payload: Any? = nil) {
         reset()
         self.finish(with: payload)
     }
     
     /// Typically you'll only ever call this on a top-level Coordinator.  See `reset(finishingWith: ...)` if that's preferable.
-    func reset() {
+    public func reset() {
         print("[\(String(describing: Route.self))] Resetting coordinator")
         
         // Clean up child coordinators
@@ -320,7 +325,7 @@ class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     /// we require this function to do appropriate cleanup on a screen being 'done' if the user didn't perform a task that led to an explicit 'pop' action.
     /// You should never invoke this yourself; it is used by the `coordinatedView(...)` modifier.
-    func viewDisappeared(route: AnyRoutable, defaultExit: (() -> Void)?) {
+    public func viewDisappeared(route: AnyRoutable, defaultExit: (() -> Void)?) {
         
         
         /*

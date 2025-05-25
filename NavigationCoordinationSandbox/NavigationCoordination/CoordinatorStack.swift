@@ -4,11 +4,15 @@ import SwiftUI
 // MARK: - Coordinator Stack
 
 /// This is a View you would use to create a NavigationStack with views built by a Coordinator
-struct CoordinatorStack<Route: Routable>: View {
+public struct CoordinatorStack<Route: Routable>: View {
     
     @Environment(Coordinator<Route>.self) var coordinator
     
-    var body: some View {
+    public init() {
+        
+    }
+    
+    public var body: some View {
         @Bindable var coordinator = coordinator
         
         NavigationStack(path: $coordinator.path) {
@@ -27,11 +31,15 @@ struct CoordinatorStack<Route: Routable>: View {
 }
 
 /// This is the type you would use if you're pushing views managed by a coordinator onto an existing NavigationStack
-struct ChildCoordinatorStack<Route: Routable>: View {
+public struct ChildCoordinatorStack<Route: Routable>: View {
     
     @Environment(Coordinator<Route>.self) var coordinator
     
-    var body: some View {
+    public init() {
+        
+    }
+    
+    public var body: some View {
         @Bindable var coordinator = coordinator
         
         coordinator.initialRoute.makeView(with: coordinator)
@@ -54,7 +62,7 @@ private struct CoordinatorEnvironmentKey: EnvironmentKey {
     static let defaultValue: AnyCoordinator? = nil
 }
 
-extension EnvironmentValues {
+public extension EnvironmentValues {
     var coordinator: AnyCoordinator? {
         get { self[CoordinatorEnvironmentKey.self] }
         set { self[CoordinatorEnvironmentKey.self] = newValue }
@@ -63,13 +71,13 @@ extension EnvironmentValues {
 
 // MARK: - Coordinated View Wrapper
 
-struct CoordinatedView<Content: View>: View {
+public struct CoordinatedView<Content: View>: View {
     private let coordinator: AnyCoordinator
     private let content: () -> Content
     private let route: AnyRoutable
     private let defaultExit: (() -> Void)?
     
-    init(
+    public init(
         coordinator: AnyCoordinator,
         defaultExit: (() -> Void)? = nil,
         route: AnyRoutable,
@@ -81,7 +89,7 @@ struct CoordinatedView<Content: View>: View {
         self.route = route
     }
     
-    var body: some View {
+    public var body: some View {
         content()
             .environment(\.coordinator, coordinator)
             .onDisappear {
@@ -93,7 +101,7 @@ struct CoordinatedView<Content: View>: View {
 
 // MARK: - Convenience Extensions
 
-extension View {
+public extension View {
     func coordinatedView(
         coordinator: AnyCoordinator,
         route: AnyRoutable,
