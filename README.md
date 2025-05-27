@@ -6,13 +6,13 @@ I've never been satisfied with typical solutions you might see for NavigationCoo
 
 ### Inherent deficits in solutions I've seen:
 
-1. Strong typing that forces a flat hierarchy.
+1. Strong typing that forces a flat hierarchy of routes.
 - A Coordinator will manage Routes that are often typed to one single enum; thus you have one large hierarchy.
 - A Coordinator is designed for one NavigationStack containing routes of the above type.
 - You therefore cannot push a child coordinator onto this stack due to type restrictions, despite this being a common use case (you have coordinators for smaller screen flows, which in theory allow re-usability).  Imagine the use case of "drill-down through this folder hierarchy to select a file and once selected, return to the context that triggered this file browsing."  That would all take place on the same navigation stack (or could).
 
 2. Responding to non-programmatic stack changes.
-    - Coordinators often don't cover the navigation of when a user taps a back button or uses the interactivePopGesture that is native to NavigationStack (or UINavigationController) and thus provides no callback.
+    - Coordinators often don't cover the navigation of when a user taps a back button or uses the interactivePopGesture that is native to NavigationStack (or UINavigationController) and thus provides no callback.  Sometimes you need that callback in order to do something.
 
 3. What about dependency injection? Accommdating a MVVM pattern?
 
