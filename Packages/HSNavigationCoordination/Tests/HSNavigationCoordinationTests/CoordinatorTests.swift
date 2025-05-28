@@ -239,7 +239,7 @@ final class CoordinatorTests: XCTestCase {
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
-        
+        childCoordinator.userData[childCoordinator.defaultFinishValueKey] = "test-result"
         childCoordinator.push(ChildTestRoute.childDetail(id: 42))
         XCTAssertEqual(childFinishResults.count, 0)
         
@@ -256,7 +256,7 @@ final class CoordinatorTests: XCTestCase {
         
         // TODO: When popping back past the initial in the stack, the child coordinator should be firing finish, not manually here.
         // When: Child coordinator finishes with user-initiated flag
-        childCoordinator.finish(with: "test-result", userInitiated: true)
+        //childCoordinator.finish(with: "test-result", userInitiated: true)
         
         // Then: Parent should receive finish callback with userInitiated = true
         XCTAssertEqual(childFinishResults.count, 1)

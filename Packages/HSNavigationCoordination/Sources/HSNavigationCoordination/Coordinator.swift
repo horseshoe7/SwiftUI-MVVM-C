@@ -129,6 +129,8 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     /// you can use a simple dictionary to avoid having to construct your own Coordinator types just to store data.
     public var userData: [String: Any] = [:]
+    /// use this to set a defaultFinish value, otherwise nil is passed to the onFinish block.
+    public let defaultFinishValueKey: String = "DefaultFinishValueKey"
     
     // MARK: - Child Coordinator Management
     
@@ -394,10 +396,17 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             let isInNavPath = sharedPath.routes.contains(where: { $0.identifier == typedRoute.identifier })
             if isInNavPath {
                 print("Disappeared due to something being pushed on top of it.")
-            } else if !isInNavPath && (typedRoute != self.initialRoute || (typedRoute == self.initialRoute && self.isChild)) {
-                print("[\(String(describing: Route.self)).\(String(describing: typedRoute))] Route was popped by back/swipe")
-                print("defaultExit will be called.")
-                defaultExit?()
+            } else if !isInNavPath {
+                if typedRoute != self.initialRoute {
+                    print("[\(String(describing: Route.self)).\(String(describing: typedRoute))] Route was popped by back/swipe")
+                    print("defaultExit will be called.")
+                    defaultExit?()
+                } else if typedRoute == self.initialRoute && self.isChild {
+                    // this means the view disappeared is the first in the stack, thus the stack was automatically popped.
+                    print("defaultExit will be called then the onFinish method will be called.")
+                    defaultExit?()
+                    self.finish(with: self.userData[self.defaultFinishValueKey], userInitiated: true)
+                }
             }
         }
         
