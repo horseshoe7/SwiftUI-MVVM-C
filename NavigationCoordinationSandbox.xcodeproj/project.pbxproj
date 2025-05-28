@@ -9,12 +9,14 @@
 /* Begin PBXBuildFile section */
 		B262B7102DE0C213000F5BE8 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = B262B70F2DE0C213000F5BE8 /* README.md */; };
 		B28C5DDE2DE5CC67009F2699 /* FunctionalSpecifications.md in Resources */ = {isa = PBXBuildFile; fileRef = B28C5DDD2DE5CC67009F2699 /* FunctionalSpecifications.md */; };
+		B28C5E1E2DE73859009F2699 /* HSNavigationCoordination in Frameworks */ = {isa = PBXBuildFile; productRef = B28C5E1D2DE73859009F2699 /* HSNavigationCoordination */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		B262B6FE2DE094B0000F5BE8 /* NavigationCoordinationSandbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NavigationCoordinationSandbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B262B70F2DE0C213000F5BE8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		B28C5DDD2DE5CC67009F2699 /* FunctionalSpecifications.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = FunctionalSpecifications.md; sourceTree = "<group>"; };
+		B28C5E1B2DE71B60009F2699 /* HSNavigationCoordination */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = HSNavigationCoordination; path = Packages/HSNavigationCoordination; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -30,6 +32,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B28C5E1E2DE73859009F2699 /* HSNavigationCoordination in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -42,6 +45,8 @@
 				B28C5DDD2DE5CC67009F2699 /* FunctionalSpecifications.md */,
 				B262B70F2DE0C213000F5BE8 /* README.md */,
 				B262B7002DE094B0000F5BE8 /* NavigationCoordinationSandbox */,
+				B28C5E1B2DE71B60009F2699 /* HSNavigationCoordination */,
+				B28C5E1C2DE73859009F2699 /* Frameworks */,
 				B262B6FF2DE094B0000F5BE8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -52,6 +57,13 @@
 				B262B6FE2DE094B0000F5BE8 /* NavigationCoordinationSandbox.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B28C5E1C2DE73859009F2699 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -74,6 +86,7 @@
 			);
 			name = NavigationCoordinationSandbox;
 			packageProductDependencies = (
+				B28C5E1D2DE73859009F2699 /* HSNavigationCoordination */,
 			);
 			productName = NavigationCoordinationSandbox;
 			productReference = B262B6FE2DE094B0000F5BE8 /* NavigationCoordinationSandbox.app */;
@@ -335,6 +348,13 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B28C5E1D2DE73859009F2699 /* HSNavigationCoordination */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HSNavigationCoordination;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B262B6F62DE094B0000F5BE8 /* Project object */;
 }

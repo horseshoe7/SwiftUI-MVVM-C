@@ -1,6 +1,6 @@
 import Foundation
 import SwiftUI
-
+import HSNavigationCoordination
 
 // MARK: - Example Usage
 
@@ -52,7 +52,7 @@ enum MainRoute: Routable {
             let child = coordinator.createChildCoordinator(
                 identifier: "UserDetailsFlow",
                 initialRoute: UserDetailsRoute.userDetail(userId),
-                onFinish: { result in
+                onFinish: { userInitiated, result in
                     if result != nil {
                         guard let userResult = result as? UserDetailResult else {
                             print("The Specification has changed!")
@@ -87,13 +87,14 @@ enum MainRoute: Routable {
             )
             
         case .unauthorized:
+            fatalError("Implement me!")
             
         case .authFlow:
             
             let child = coordinator.createChildCoordinator(
                 identifier: "AuthFlow",
                 initialRoute: AuthRoutes.login,
-                onFinish: { result in
+                onFinish: { userInitiated, result in
                     if result != nil {
                         guard let userResult = result as? UserAuthResult else {
                             print("The Specification has changed!")
@@ -101,7 +102,7 @@ enum MainRoute: Routable {
                         }
                         print("Returned from Auth Flow: \(userResult.userId) - isAuthenticated: \(userResult.isAuthenticated)")
                     } else {
-                        coordinator.replace(MainRoute.authFlow)
+                        coordinator.push(MainRoute.unauthorized, type: .replaceRoot)
                     }
                 }
             )
@@ -124,10 +125,10 @@ enum UserDetailsRoute: Routable {
         switch self {
         case .userDetail(let userId):
             let exits = UserProfileView.ViewModel.NavigationExits(
-                onFinish: { programmatically in
+                onFinish: { userInitiated in
                     print("Did Go back from User Detail")
-                    if programmatically {
-                        coordinator.pop()
+                    if !userInitiated {
+                        coordinator.goBack()
                     }
                     coordinator.finish(with: nil)
                 },
@@ -147,14 +148,14 @@ enum UserDetailsRoute: Routable {
                 coordinator: AnyCoordinator(coordinator),
                 route: AnyRoutable(self),
                 defaultExit: {
-                    exits.onFinish(false)
+                    exits.onFinish(true)
                 }
             )
         case .editProfile(let userId):
             let exits = EditUserView.ViewModel.NavigationExits(
-                onFinish: { programatically in
-                    if programatically {
-                        coordinator.pop()
+                onFinish: { userInitiated in
+                    if !userInitiated {
+                        coordinator.goBack()
                     }
                     print("Went back from EditUserView")
                 },
@@ -168,15 +169,20 @@ enum UserDetailsRoute: Routable {
                 .coordinatedView(
                     coordinator: AnyCoordinator(coordinator),
                     route: AnyRoutable(self),
-                    defaultExit: { exits.onFinish(false) }
+                    defaultExit: { exits.onFinish(true) }
                 )
         }
     }
 }
 
 enum AuthRoutes: Routable {
+    
     case login
     case register
+    
+    func makeView(with coordinator: Coordinator<AuthRoutes>) -> some View {
+        fatalError("Implement Views!")
+    }
 }
 
 //// Example payload types for exit callbacks

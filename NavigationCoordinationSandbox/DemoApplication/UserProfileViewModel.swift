@@ -15,7 +15,7 @@ extension UserProfileView {
         // MARK: Navigation / Coordination Dependencies
         /// These represent your 'exit' points of this view (with perhaps the exeception of a 'back' action on navigation controller)
         struct NavigationExits {
-            let onFinish: (_ programmatically: Bool) -> Void
+            let onFinish: (_ userInitiated: Bool) -> Void
             let onEditUser: (String) -> Void
         }
         private let exits: NavigationExits

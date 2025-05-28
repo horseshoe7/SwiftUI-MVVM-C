@@ -59,7 +59,8 @@ public struct ChildCoordinatorStack<Route: Routable>: View {
 // MARK: - Environment Key
 
 private struct CoordinatorEnvironmentKey: EnvironmentKey {
-    static let defaultValue: AnyCoordinator? = nil
+    // TODO: Deal with Concurrency
+    nonisolated(unsafe) static let defaultValue: AnyCoordinator? = nil
 }
 
 public extension EnvironmentValues {

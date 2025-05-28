@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import HSNavigationCoordination
 
 @main
 struct NavigationCoordinationSandboxApp: App {

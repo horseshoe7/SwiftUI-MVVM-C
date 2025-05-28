@@ -3,32 +3,36 @@ import SwiftUI
 
 // MARK: - Navigation Types
 
-public enum NavigationType {
+public enum NavigationForwardType {
     case push
-    case replace
+    case replaceRoot
     case sheet
     case fullScreenCover
 }
 
-public enum NavigationPopType {
-    case pop(to: AnyRoutable)
+public enum NavigationBackType {
+    case popTo(AnyRoutable)
     case pop(last: Int)
-    case sheet
-    case fullScreenCover
+    case dismissSheet
+    case dismissFullScreenCover
 }
 
+/// userInitiated means if the the coordinator finish was due to a user interaction, such as a swipe to dismiss or to pop the navigation stack.  Perhaps your code will react differently.
+public typealias CoordinatorFinishBlock = (_ userInitiated: Bool, _ result: Any?, _ finishingCoordinator: AnyCoordinator) -> Void
+public typealias ViewDefaultFinishBlock = () -> Void
 
 // MARK: - Type-erased Coordinator
 
 public protocol CoordinatorProtocol: AnyObject {
     var identifier: String { get }
-    func push<Route: Routable>(_ route: Route, type: NavigationType)
-    func pop(_ type: NavigationPopType)
+    func push<Route: Routable>(_ route: Route, type: NavigationForwardType)
+    func goBack(_ type: NavigationBackType)
     func reset()
     
     /// this is used as a callback of CoordinatedView so that it can handle any navigations that weren't triggered in code.
     /// The identifier can be used to give context to a view, while troubleshooting.
-    func viewDisappeared(route: AnyRoutable, defaultExit: (() -> Void)?)
+    /// if coordinator finish block MUST have the first argument (userInitiated set to true).
+    func viewDisappeared(route: AnyRoutable, defaultExit: ViewDefaultFinishBlock?)
 }
 
 
@@ -41,19 +45,19 @@ public struct AnyCoordinator {
     
     var identifier: String { _coordinator.identifier }
     
-    func push<Route: Routable>(_ route: Route, type: NavigationType = .push) {
+    func push<Route: Routable>(_ route: Route, type: NavigationForwardType = .push) {
         _coordinator.push(route, type: type)
     }
     
-    func pop(_ type: NavigationPopType = .pop(last: 1)) {
-        _coordinator.pop(type)
+    func goBack(_ type: NavigationBackType = .pop(last: 1)) {
+        _coordinator.goBack(type)
     }
     
     func reset() {
         _coordinator.reset()
     }
     
-    func viewDisappeared(route: AnyRoutable, defaultExit: (() -> Void)?) {
+    func viewDisappeared(route: AnyRoutable, defaultExit: ViewDefaultFinishBlock?) {
         _coordinator.viewDisappeared(route: route, defaultExit: defaultExit)
     }
     
@@ -147,10 +151,10 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     // MARK: - Exit Callbacks
     
     /// provides the return type of the coordinator, and the type-erased coordinator that just finished. (i.e. so you can remove it)
-    private var onFinish: ((Any?, AnyCoordinator) -> Void)?
+    private var onFinish: CoordinatorFinishBlock?
     
     // MARK: - Initialization
-    public convenience init(identifier: String, initialRoute: Route, onFinish: ((Any?, AnyCoordinator) -> Void)? = nil) {
+    public convenience init(identifier: String, initialRoute: Route, onFinish: CoordinatorFinishBlock? = nil) {
         self.init(
             identifier: identifier,
             initialRoute: initialRoute,
@@ -160,7 +164,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     /// Initializer for child coordinators with shared path reference
-    public init(identifier: String, initialRoute: Route, sharedPath: SharedNavigationPath, onFinish: ((Any?, AnyCoordinator) -> Void)? = nil) {
+    public init(identifier: String, initialRoute: Route, sharedPath: SharedNavigationPath, onFinish: CoordinatorFinishBlock? = nil) {
         
         self.identifier = identifier
         self.sharedPath = sharedPath
@@ -175,7 +179,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     public func createChildCoordinator<ChildRoute: Routable>(
         identifier: String,
         initialRoute: ChildRoute,
-        onFinish: @escaping (Any?) -> Void
+        onFinish: @escaping (Bool, Any?) -> Void
     ) -> Coordinator<ChildRoute> {
         
         if let existingAny = childCoordinators[identifier] {
@@ -189,8 +193,8 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             identifier: identifier,
             initialRoute: initialRoute,
             sharedPath: sharedPath,
-            onFinish: { [weak self] anyResult, thisCoordinator in
-                onFinish(anyResult)
+            onFinish: { [weak self] userInitiated, anyResult, thisCoordinator in
+                onFinish(userInitiated, anyResult)
                 // Remove the child coordinator when it finishes
                 self?.removeChildCoordinator(thisCoordinator)
             }
@@ -232,14 +236,14 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     // MARK: - Finish Methods
     
-    public func finish(with payload: Any? = nil) {
-        print("[\(String(describing: Route.self))] Coordinator finishing with payload: \(String(describing: payload))")
-        onFinish?(payload, AnyCoordinator(self))
+    public func finish(with result: Any? = nil, userInitiated: Bool = false) {
+        print("[\(String(describing: Route.self))] Coordinator finishing with payload: \(String(describing: result))")
+        onFinish?(userInitiated, result, AnyCoordinator(self))
     }
     
     // MARK: - Navigation Methods
     
-    public func push<T: Routable>(_ route: T, type: NavigationType = .push) {
+    public func push<T: Routable>(_ route: T, type: NavigationForwardType = .push) {
         
         switch type {
         case .push:
@@ -249,13 +253,13 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             print("[\(String(describing: Route.self))] Pushing typed route: \(route)")
             wasProgrammaticallyPopped = false
             sharedPath.append(typedRoute)
-        case .replace:
+        case .replaceRoot:
             guard let typedRoute = route as? Route else {
                 fatalError("Misuse!  You should not replace routes of different types.")
             }
             print("[\(String(describing: Route.self))] Replacing Stack to typed route: \(route)")
             wasProgrammaticallyPopped = false
-            sharedPath.removeAll()
+            // sharedPath.removeAll()
             self.initialRoute = typedRoute
             
         case .sheet:
@@ -276,7 +280,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         }
     }
     
-    public func pop(_ type: NavigationPopType = .pop(last: 1)) {
+    public func goBack(_ type: NavigationBackType = .pop(last: 1)) {
         
         switch type {
         case .pop(let count):
@@ -285,11 +289,14 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
                 wasProgrammaticallyPopped = true // sets a flag for viewDisappeared
                 path.removeLast(actualCount)
             }
-        case .sheet:
+        case .popTo(let toAnyRoute):
+            fatalError("Implement me")
+            
+        case .dismissSheet:
             wasProgrammaticallyPopped = true
             isPresentingSheet = false
             sheet = nil
-        case .fullScreenCover:
+        case .dismissFullScreenCover:
             wasProgrammaticallyPopped = true // this is necessary
             isPresentingFullscreenCover = false
             fullscreenCover = nil
@@ -335,7 +342,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     /// we require this function to do appropriate cleanup on a screen being 'done' if the user didn't perform a task that led to an explicit 'pop' action.
     /// You should never invoke this yourself; it is used by the `coordinatedView(...)` modifier.
-    public func viewDisappeared(route: AnyRoutable, defaultExit: (() -> Void)?) {
+    public func viewDisappeared(route: AnyRoutable, defaultExit: ViewDefaultFinishBlock?) {
         
         
         /*
