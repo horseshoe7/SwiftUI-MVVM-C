@@ -179,6 +179,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     public func createChildCoordinator<ChildRoute: Routable>(
         identifier: String,
         initialRoute: ChildRoute,
+        navigationForwardType: NavigationForwardType,
         onFinish: @escaping (Bool, Any?) -> Void
     ) -> Coordinator<ChildRoute> {
         
@@ -189,10 +190,14 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             return existing
         }
         
+        guard navigationForwardType != .replaceRoot else {
+            fatalError("Invalid configuration.  It makes no sense to replace the root view controller with a child view controller.  This could result in a NavigationStack inside a navigation stack.  Behaviour undefined as this hasn't been considered in the technical design.")
+        }
+        
         let childCoordinator = Coordinator<ChildRoute>(
             identifier: identifier,
             initialRoute: initialRoute,
-            sharedPath: sharedPath,
+            sharedPath: navigationForwardType == .push ? sharedPath : .init(NavigationPath()),
             onFinish: { [weak self] userInitiated, anyResult, thisCoordinator in
                 onFinish(userInitiated, anyResult)
                 // Remove the child coordinator when it finishes
@@ -208,6 +213,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     /// if you build your own, be sure it removes the child from the parent.  See `createChildCoordinator(...)`'s onFinish implementation for an example.
+    /// Note as well the parameter navigationForwardType.
     public func buildChildCoordinator<ChildRoute: Routable, CoordinatorType: Coordinator<ChildRoute>>(
         identifier: String,
         initialRoute: ChildRoute,
