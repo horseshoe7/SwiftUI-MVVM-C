@@ -15,6 +15,10 @@ struct HomeScreenView: View {
             Button("Show Settings") {
                 viewModel.sendAction(.didTapShowSettings)
             }
+            
+            Button("Show Auth") {
+                viewModel.sendAction(.didTapAuth)
+            }
         }
         .onAppear {
             viewModel.sendAction(.viewDidAppear)
@@ -37,7 +41,8 @@ private extension HomeScreenView.ViewModel {
         return .init(
             exits: .init(
                 onShowProfile: { _ in },
-                onShowSettings: { }
+                onShowSettings: { },
+                onShowAuth: { }
             )
         )
     }

@@ -16,6 +16,7 @@ extension HomeScreenView {
         struct NavigationExits {
             let onShowProfile: (String) -> Void
             let onShowSettings: () -> Void
+            let onShowAuth: () -> Void
         }
         private let exits: NavigationExits
         
@@ -34,6 +35,7 @@ extension HomeScreenView {
             case viewDidDisappear
             case didTapShowProfile
             case didTapShowSettings
+            case didTapAuth
         }
         
         func sendAction(_ action: ViewAction) {
@@ -45,7 +47,9 @@ extension HomeScreenView {
             case .didTapShowProfile:
                 self.exits.onShowProfile("MyUserID")
             case .didTapShowSettings:
-                self.exits.onShowSettings()
+                self.exits.onShowSettings()    
+            case .didTapAuth:
+                self.exits.onShowAuth()
             }
         }
     }

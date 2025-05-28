@@ -8,11 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		B262B7102DE0C213000F5BE8 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = B262B70F2DE0C213000F5BE8 /* README.md */; };
+		B28C5DDE2DE5CC67009F2699 /* FunctionalSpecifications.md in Resources */ = {isa = PBXBuildFile; fileRef = B28C5DDD2DE5CC67009F2699 /* FunctionalSpecifications.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		B262B6FE2DE094B0000F5BE8 /* NavigationCoordinationSandbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NavigationCoordinationSandbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B262B70F2DE0C213000F5BE8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		B28C5DDD2DE5CC67009F2699 /* FunctionalSpecifications.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = FunctionalSpecifications.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -37,6 +39,7 @@
 		B262B6F52DE094B0000F5BE8 = {
 			isa = PBXGroup;
 			children = (
+				B28C5DDD2DE5CC67009F2699 /* FunctionalSpecifications.md */,
 				B262B70F2DE0C213000F5BE8 /* README.md */,
 				B262B7002DE094B0000F5BE8 /* NavigationCoordinationSandbox */,
 				B262B6FF2DE094B0000F5BE8 /* Products */,
@@ -115,6 +118,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B28C5DDE2DE5CC67009F2699 /* FunctionalSpecifications.md in Resources */,
 				B262B7102DE0C213000F5BE8 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

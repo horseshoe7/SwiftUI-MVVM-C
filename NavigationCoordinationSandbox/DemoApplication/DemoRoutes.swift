@@ -12,11 +12,11 @@ struct UserDetailResult {
 
 // Example route types
 enum MainRoute: Routable {
+    case unauthorized
+    case authFlow
     case home
     case profile(userId: String)
     case settings
-    
-    var id: String { String(describing: self) }
     
     @ViewBuilder
     func makeView(with coordinator: Coordinator<MainRoute>) -> some View {
@@ -30,6 +30,9 @@ enum MainRoute: Routable {
                         },
                         onShowSettings: {
                             coordinator.push(MainRoute.settings)
+                        },
+                        onShowAuth: {
+                            coordinator.fullscreenCover = MainRoute.authFlow
                         }
                     )
                 )
@@ -82,6 +85,30 @@ enum MainRoute: Routable {
                 route: AnyRoutable(self),
                 defaultExit: exits.onFinish
             )
+            
+        case .unauthorized:
+            
+        case .authFlow:
+            
+            let child = coordinator.createChildCoordinator(
+                identifier: "AuthFlow",
+                initialRoute: AuthRoutes.login,
+                onFinish: { result in
+                    if result != nil {
+                        guard let userResult = result as? UserAuthResult else {
+                            print("The Specification has changed!")
+                            return
+                        }
+                        print("Returned from Auth Flow: \(userResult.userId) - isAuthenticated: \(userResult.isAuthenticated)")
+                    } else {
+                        coordinator.replace(MainRoute.authFlow)
+                    }
+                }
+            )
+            
+            // a CoordinatorStack because it is its own "navigation controller" and not on top of an existing one.
+            CoordinatorStack<UserDetailsRoute>()
+                .environment(child) // uses the initialRoute to create the View.
         }
     }
 }
@@ -91,7 +118,6 @@ enum UserDetailsRoute: Routable {
     case userDetail(String)
     case editProfile(String)
     
-    var id: String { String(describing: self) }
     
     @ViewBuilder
     func makeView(with coordinator: Coordinator<UserDetailsRoute>) -> some View {
@@ -146,4 +172,15 @@ enum UserDetailsRoute: Routable {
                 )
         }
     }
+}
+
+enum AuthRoutes: Routable {
+    case login
+    case register
+}
+
+//// Example payload types for exit callbacks
+struct UserAuthResult {
+    let isAuthenticated: Bool
+    let userId: String
 }

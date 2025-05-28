@@ -13,6 +13,10 @@ public protocol Routable: Hashable, Identifiable {
 public extension Routable {
     /// This was designed on the assumption you're using enums as  your Routable type.
     var identifier: String {
+        return id
+    }
+    
+    var id: String {
         return "\(String(describing: type(of: self))).\(String(describing: self))"
     }
 }

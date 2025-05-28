@@ -5,11 +5,13 @@ import SwiftUI
 
 public enum NavigationType {
     case push
+    case replace
     case sheet
     case fullScreenCover
 }
 
 public enum NavigationPopType {
+    case pop(to: AnyRoutable)
     case pop(last: Int)
     case sheet
     case fullScreenCover
@@ -115,7 +117,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     public let identifier: String
     
     /// If this were a UINavigationController, this would be your first view controller in the stack.
-    public let initialRoute: Route
+    public var initialRoute: Route
     public var sheet: Route?
     public var fullscreenCover: Route?
     
@@ -247,6 +249,14 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             print("[\(String(describing: Route.self))] Pushing typed route: \(route)")
             wasProgrammaticallyPopped = false
             sharedPath.append(typedRoute)
+        case .replace:
+            guard let typedRoute = route as? Route else {
+                fatalError("Misuse!  You should not replace routes of different types.")
+            }
+            print("[\(String(describing: Route.self))] Replacing Stack to typed route: \(route)")
+            wasProgrammaticallyPopped = false
+            sharedPath.removeAll()
+            self.initialRoute = typedRoute
             
         case .sheet:
             guard let typedRoute = route as? Route else {
