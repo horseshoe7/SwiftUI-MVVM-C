@@ -52,6 +52,7 @@ enum MainRoute: Routable {
             let child = coordinator.createChildCoordinator(
                 identifier: "UserDetailsFlow",
                 initialRoute: UserDetailsRoute.userDetail(userId),
+                navigationForwardType: .push,
                 onFinish: { userInitiated, result in
                     if result != nil {
                         guard let userResult = result as? UserDetailResult else {
@@ -94,6 +95,7 @@ enum MainRoute: Routable {
             let child = coordinator.createChildCoordinator(
                 identifier: "AuthFlow",
                 initialRoute: AuthRoutes.login,
+                navigationForwardType: .fullScreenCover,
                 onFinish: { userInitiated, result in
                     if result != nil {
                         guard let userResult = result as? UserAuthResult else {
