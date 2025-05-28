@@ -16,9 +16,9 @@ struct HomeScreenView: View {
                 viewModel.sendAction(.didTapShowSettings)
             }
             
-            Button("Show Auth") {
-                viewModel.sendAction(.didTapAuth)
-            }
+//            Button("Show Auth") {
+//                viewModel.sendAction(.didTapAuth)
+//            }
         }
         .onAppear {
             viewModel.sendAction(.viewDidAppear)

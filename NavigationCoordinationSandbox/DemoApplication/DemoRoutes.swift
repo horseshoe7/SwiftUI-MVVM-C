@@ -73,7 +73,7 @@ enum MainRoute: Routable {
                     print("Did Return from Settings")
                 },
                 onReset: {
-                    coordinator.reset()
+                    coordinator.goBack(.popTo(AnyRoutable(MainRoute.home)))
                 }
             )
             SettingsView(
