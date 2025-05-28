@@ -67,3 +67,6 @@ Thank you to Tiago Henriques and his [blog post on the topic ](https://www.tiago
 MIT.  Or Beerware if you prefer.  Yes, buy me a beer and don't send any lawyers after me.
 
 
+## TODO
+
+- Ensure that finishCoordinator callback is invoked appropriately when viewDisappeared is called. 

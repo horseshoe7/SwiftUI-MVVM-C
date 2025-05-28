@@ -392,7 +392,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         if let typedRoute = route.typedByRoute(as: Route.self) {
              
             let isInNavPath = sharedPath.routes.contains(where: { $0.identifier == typedRoute.identifier })
-            if isInNavPath || (typedRoute == self.initialRoute) {
+            if isInNavPath {
                 print("Disappeared due to something being pushed on top of it.")
             } else if !isInNavPath && (typedRoute != self.initialRoute || (typedRoute == self.initialRoute && self.isChild)) {
                 print("[\(String(describing: Route.self)).\(String(describing: typedRoute))] Route was popped by back/swipe")
