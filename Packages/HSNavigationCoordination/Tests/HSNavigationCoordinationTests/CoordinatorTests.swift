@@ -235,11 +235,12 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .push
+            navigationForwardType: .push,
+            defaultFinishValue: "test-result"
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
-        childCoordinator.userData[childCoordinator.defaultFinishValueKey] = "test-result"
+
         childCoordinator.push(ChildTestRoute.childDetail(id: 42))
         XCTAssertEqual(childFinishResults.count, 0)
         
@@ -460,7 +461,7 @@ final class CoordinatorTests: XCTestCase {
         XCTAssertEqual(childCoordinator.path.count, 1)
         
         // When: Child coordinator resets with finish
-        childCoordinator.reset(finishingWith: "reset-result")
+        childCoordinator.popAllAndFinish(with: "reset-result")
         
         // Then: Child should be reset and finish callback should be called
         XCTAssertEqual(childCoordinator.path.count, 0)

@@ -11,6 +11,9 @@ public enum NavigationForwardType {
 }
 
 public enum NavigationBackType {
+    /// in the case of a child coordinator, it will pop to the screen that pushed it, removing the child.  In the case of a parent, it will pop to root.  Provide an override return value, otherwise the coordinator's .defaultFinishValueKey in the userData will be used.
+    case popToStart(returnValue: Any?)
+    /// needs to be the same Route type as its coordinator.
     case popTo(AnyRoutable)
     case pop(last: Int)
     case dismissSheet
@@ -182,6 +185,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         identifier: String,
         initialRoute: ChildRoute,
         navigationForwardType: NavigationForwardType,
+        defaultFinishValue: Any? = nil,
         onFinish: @escaping (Bool, Any?) -> Void
     ) -> Coordinator<ChildRoute> {
         
@@ -207,6 +211,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             }
         )
         childCoordinator.isChild = true
+        childCoordinator.userData[childCoordinator.defaultFinishValueKey] = defaultFinishValue
         
         let anyChild = AnyCoordinator(childCoordinator)
         childCoordinators[identifier] = anyChild
@@ -261,13 +266,14 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             print("[\(String(describing: Route.self))] Pushing typed route: \(route)")
             wasProgrammaticallyPopped = false
             sharedPath.append(typedRoute)
+            
         case .replaceRoot:
             guard let typedRoute = route as? Route else {
                 fatalError("Misuse!  You should not replace routes of different types.")
             }
             print("[\(String(describing: Route.self))] Replacing Stack to typed route: \(route)")
             wasProgrammaticallyPopped = false
-            // sharedPath.removeAll()
+            self.goBack(.popTo(AnyRoutable(self.initialRoute)))
             self.initialRoute = typedRoute
             
         case .sheet:
@@ -298,7 +304,20 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
                 path.removeLast(actualCount)
             }
         case .popTo(let toAnyRoute):
-            fatalError("Implement me")
+            guard let typedRoute = toAnyRoute.typedByRoute(as: Route.self) else {
+                fatalError("Misuse.  Read the property description.  You must pass a Route of the same type of this coordinator")
+            }
+            guard let lastIndex = localStack.lastIndex(where: { $0 == typedRoute }) else {
+                print("WARNING: The requested route was not in the stack.  Doing nothing.")
+                return
+            }
+            let numToRemove = localStack.count - 1 - lastIndex
+            wasProgrammaticallyPopped = true
+            path.removeLast(numToRemove)
+            
+            
+        case .popToStart(let returnValue):
+            self.popAllAndFinish(with: returnValue ?? defaultReturnValue)
             
         case .dismissSheet:
             wasProgrammaticallyPopped = true
@@ -312,10 +331,13 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     /// Resets the Coordinator to the state when it began while also 'finishing' as well.  (Notifies and cleans up with the parent).
-    /// Typically you'll call this on a child coordinator
-    public func reset(finishingWith payload: Any? = nil) {
+    /// Typically you'll call this on a child coordinator.  If you call it on a root coordinator, (isChild == false), then finish is not invoked.
+    func popAllAndFinish(with payload: Any? = nil) {
         reset()
-        self.finish(with: payload)
+        
+        if isChild {
+            self.finish(with: payload)
+        }
     }
     
     /// Typically you'll only ever call this on a top-level Coordinator.  See `reset(finishingWith: ...)` if that's preferable.
@@ -393,7 +415,11 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         
         if let typedRoute = route.typedByRoute(as: Route.self) {
              
-            let isInNavPath = sharedPath.routes.contains(where: { $0.identifier == typedRoute.identifier })
+            let isInNavPath = (
+                sharedPath.routes.contains(where: { $0.identifier == typedRoute.identifier }) ||
+                localStack.contains(where: { $0 == typedRoute })
+            )
+            
             if isInNavPath {
                 print("Disappeared due to something being pushed on top of it.")
             } else if !isInNavPath {
@@ -405,11 +431,32 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
                     // this means the view disappeared is the first in the stack, thus the stack was automatically popped.
                     print("defaultExit will be called then the onFinish method will be called.")
                     defaultExit?()
-                    self.finish(with: self.userData[self.defaultFinishValueKey], userInitiated: true)
+                    
+                    let returnValue = self.userData[self.defaultFinishValueKey]
+                    if returnValue == nil {
+                        print("WARNING: No default value specified.  This could be as you intend.  If not, set .userData[coordinator.defaultFinishValueKey] to something useful when setting up your coordinator.")
+                    }
+                    self.finish(with: returnValue, userInitiated: true)
                 }
             }
+        } else {
+            // this route was not in the localStack, which suggests you popped back further than the whole stack.
+            print("You popped back further than the local stack.  Assuming finished then.")
+            let returnValue = self.userData[self.defaultFinishValueKey]
+            if returnValue == nil {
+                print("WARNING: No default value specified.  This could be as you intend.  If not, set .userData[coordinator.defaultFinishValueKey] to something useful when setting up your coordinator.")
+            }
+            self.finish(with: returnValue, userInitiated: true)
         }
         
         wasProgrammaticallyPopped = false
+    }
+    
+    private var defaultReturnValue: Any? {
+        let returnValue = self.userData[self.defaultFinishValueKey]
+        if returnValue == nil {
+            print("WARNING: No default value specified.  This could be as you intend.  If not, set .userData[coordinator.defaultFinishValueKey] to something useful when setting up your coordinator.")
+        }
+        return returnValue
     }
 }

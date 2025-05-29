@@ -53,14 +53,14 @@ enum MainRoute: Routable {
                 identifier: "UserDetailsFlow",
                 initialRoute: UserDetailsRoute.userDetail(userId),
                 navigationForwardType: .push,
+                defaultFinishValue: UserDetailResult(selectedAction: "Cancelled", userId: userId),
                 onFinish: { userInitiated, result in
-                    if result != nil {
-                        guard let userResult = result as? UserDetailResult else {
-                            print("The Specification has changed!")
-                            return
-                        }
-                        print("Returned from User Flow: \(userResult.selectedAction) - \(userResult.userId)")
+                    
+                    guard let userResult = result as? UserDetailResult else {
+                        fatalError("Providing a defaultFinishValue when you create your coordinator ensures that when it is dismissed by user interaction (e.g. swipe or back button), a value is provided.  Not necessary as you can also check for nil, but this remains flexible to your needs.")
                     }
+
+                    print("Returned from User Flow: \(userResult.selectedAction) - \(userResult.userId)")
                 }
             )
             
@@ -73,7 +73,7 @@ enum MainRoute: Routable {
                     print("Did Return from Settings")
                 },
                 onReset: {
-                    coordinator.goBack(.popTo(AnyRoutable(MainRoute.home)))
+                    coordinator.goBack(.popToStart(returnValue: nil))
                 }
             )
             SettingsView(
@@ -163,7 +163,7 @@ enum UserDetailsRoute: Routable {
                 },
                 onSavedUser: { userId in
                     print("Saved User; Should pop back to Home Screen.")
-                    coordinator.reset(finishingWith: UserDetailResult.init(selectedAction: "Saved", userId: userId))
+                    coordinator.goBack(.popToStart(returnValue: UserDetailResult(selectedAction: "Saved", userId: userId)))
                 }
             )
                 

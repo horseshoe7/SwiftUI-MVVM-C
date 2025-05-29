@@ -70,3 +70,4 @@ MIT.  Or Beerware if you prefer.  Yes, buy me a beer and don't send any lawyers 
 ## TODO
 
 - Ensure that finishCoordinator callback is invoked appropriately when viewDisappeared is called. 
+- Ensure you can use exits to modify userData on the Coordinator.
