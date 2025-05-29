@@ -169,13 +169,15 @@ final class CoordinatorTests: XCTestCase {
     
     func test_pushFromRootThenPushChildCoordstack() throws {
         // Given: A root coordinator with a pushed route
-        rootCoordinator.push(TestRoute.profile)
+        let parentRoute = TestRoute.profile
+        rootCoordinator.push(parentRoute)
         XCTAssertEqual(rootCoordinator.path.count, 1)
         
         // When: Creating a child coordinator with shared navigation path
         var childFinishResults: [(userInitiated: Bool, result: Any?)] = []
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
+            parentPushRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
             navigationForwardType: .push
         ) { userInitiated, result in
@@ -196,44 +198,57 @@ final class CoordinatorTests: XCTestCase {
         XCTAssertEqual(childCoordinator.localStack.count, 2)
     }
     
-    func test_thatGoBackFromChildCoordinatorCanOnlyTakeYouBackToWhereTheCoordinatorBegan() {
+    func test_GoBackWithPopListInChildCoordinatorCanOnlyTakeYouBackToChildsInitialRoute() {
         // Given: Root coordinator with some navigation
         rootCoordinator.push(TestRoute.profile)
         rootCoordinator.push(TestRoute.settings)
-        rootCoordinator.push(TestRoute.detail(id: 1)) // this triggers a makeView, which creates the childCoordinator below and injects it.
+        let parentRoute = TestRoute.detail(id: 1)
+        rootCoordinator.push(parentRoute) // this triggers a makeView, which creates the childCoordinator below and injects it.
         XCTAssertEqual(rootCoordinator.path.count, 3)
+        XCTAssertEqual(rootCoordinator.localStack.count, 4) // includes initialRoute of .home
         
         // And: Child coordinator that pushes additional routes
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "limited-child",
+            parentPushRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
             navigationForwardType: .push
         ) { _, _ in }
         
         childCoordinator.push(ChildTestRoute.childDetail(id: 1))
         childCoordinator.push(ChildTestRoute.childSettings)
-        XCTAssertEqual(rootCoordinator.path.count, 5) // 3 parent + 2 child
+        XCTAssertEqual(rootCoordinator.path.count, 5) // 3 parent (the initial in the path is actually the parentRoute, not the child's initial) + 2 child
         
         // When: Child coordinator tries to go back more than its own routes
         childCoordinator.goBack(.pop(last: 10)) // Trying to pop more than possible
         
         // Then: Should only pop child coordinator's own routes, not parent's
-        let expectedMinimumPath = 2 // Parent's routes should remain
+        let expectedMinimumPath = 3 // Parent's routes should remain
         XCTAssertGreaterThanOrEqual(rootCoordinator.path.count, expectedMinimumPath)
         
+        XCTAssertEqual(rootCoordinator.localStack.count, 4, "Should contain home, profile, settings, detail(id: 1)")
         // And: Child coordinator should be at its initial state
         XCTAssertEqual(childCoordinator.localStack.count, 1)
         XCTAssertEqual(childCoordinator.localStack.first, .childHome)
     }
     
+    func test_GoBackWithPopToStartInChildCoordinatorWillTakeYouBackOneBeforeParentRoute() {
+        // the idea here is to test that when you goBack with .popToStart(finishValue:),
+        // you're essentially saying 'finish this coordinator with return value'
+        
+        
+    }
+    
     func test_userInitiatedGoBackFromChildCoordinatorSoThatItGetsCoordinatorFinishedCalled() throws {
         // Given: A child coordinator with some navigation
         
-        rootCoordinator.push(TestRoute.detail(id: 42)) // this pushes a route, which in turn in makeView creates a child coordinator and a ChildCoordinatorStack.
+        let parentRoute = TestRoute.detail(id: 42)
+        rootCoordinator.push(parentRoute) // this pushes a route, which in turn in makeView creates a child coordinator and a ChildCoordinatorStack.
         
         var childFinishResults: [(userInitiated: Bool, result: Any?)] = []
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
+            parentPushRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
             navigationForwardType: .push,
             defaultFinishValue: "test-result"
@@ -389,24 +404,25 @@ final class CoordinatorTests: XCTestCase {
         print("Test implemented but will fail due to fatalError until you implement that.")
         return
         
-        // Given: A child coordinator
-        let childCoordinator = rootCoordinator.createChildCoordinator(
-            identifier: "child-test",
-            initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .push
-        ) { _, _ in }
-        
-        // When/Then: Attempting to create child with replaceRoot should fail
-        XCTAssertThrowsError(
-            try rootCoordinator.createChildCoordinator(
-                identifier: "invalid-child",
-                initialRoute: ChildTestRoute.childHome,
-                navigationForwardType: .replaceRoot
-            ) { _, _ in }
-        ) { error in
-            // Should be a fatalError, but we can't easily test that in unit tests
-            // This test documents the expected behavior
-        }
+//        // Given: A child coordinator
+//        let childCoordinator = rootCoordinator.createChildCoordinator(
+//            identifier: "child-test",
+//            parentPushRoute: AnyRoutable(parentRoute)
+//            initialRoute: ChildTestRoute.childHome,
+//            navigationForwardType: .push
+//        ) { _, _ in }
+//        
+//        // When/Then: Attempting to create child with replaceRoot should fail
+//        XCTAssertThrowsError(
+//            try rootCoordinator.createChildCoordinator(
+//                identifier: "invalid-child",
+//                initialRoute: ChildTestRoute.childHome,
+//                navigationForwardType: .replaceRoot
+//            ) { _, _ in }
+//        ) { error in
+//            // Should be a fatalError, but we can't easily test that in unit tests
+//            // This test documents the expected behavior
+//        }
     }
     
     // MARK: - Coordinator Lifecycle Tests
@@ -417,7 +433,7 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .push
+            navigationForwardType: .sheet
         ) { _, _ in }
         
         XCTAssertEqual(childCoordinator.identifier, "child-test")
@@ -425,12 +441,14 @@ final class CoordinatorTests: XCTestCase {
     
     func test_resetRootCoordinator() {
         // Given: A root coordinator with complex state
-        rootCoordinator.push(TestRoute.profile)
+        let parentPushRoute = TestRoute.profile
+        rootCoordinator.push(parentPushRoute)
         rootCoordinator.push(TestRoute.settings, type: .sheet)
         rootCoordinator.push(TestRoute.detail(id: 1), type: .fullScreenCover)
         
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
+            parentPushRoute: AnyRoutable(parentPushRoute),
             initialRoute: ChildTestRoute.childHome,
             navigationForwardType: .push
         ) { _, _ in }
@@ -475,11 +493,14 @@ final class CoordinatorTests: XCTestCase {
     func test_sharedVsIsolatedNavigationPaths() {
         // Given: Root coordinator with some navigation
         rootCoordinator.push(TestRoute.profile)
-        rootCoordinator.push(TestRoute.settings)
+        
+        let parentPushRoute = TestRoute.settings
+        rootCoordinator.push(parentPushRoute)
         
         // When: Creating shared path child coordinator
         let sharedChild = rootCoordinator.createChildCoordinator(
             identifier: "shared-child",
+            parentPushRoute: AnyRoutable(parentPushRoute),
             initialRoute: ChildTestRoute.childHome,
             navigationForwardType: .push
         ) { _, _ in }

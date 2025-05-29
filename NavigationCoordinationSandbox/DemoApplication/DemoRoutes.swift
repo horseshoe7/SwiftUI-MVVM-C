@@ -51,6 +51,7 @@ enum MainRoute: Routable {
             
             let child = coordinator.createChildCoordinator(
                 identifier: "UserDetailsFlow",
+                parentPushRoute: AnyRoutable(self),
                 initialRoute: UserDetailsRoute.userDetail(userId),
                 navigationForwardType: .push,
                 defaultFinishValue: UserDetailResult(selectedAction: "Cancelled", userId: userId),
@@ -73,7 +74,7 @@ enum MainRoute: Routable {
                     print("Did Return from Settings")
                 },
                 onReset: {
-                    coordinator.goBack(.popToStart(returnValue: nil))
+                    coordinator.goBack(.popToStart(finishValue: nil))
                 }
             )
             SettingsView(
@@ -132,7 +133,6 @@ enum UserDetailsRoute: Routable {
                     if !userInitiated {
                         coordinator.goBack()
                     }
-                    coordinator.finish(with: nil)
                 },
                 onEditUser: { userId in
                     coordinator.push(UserDetailsRoute.editProfile(userId))
@@ -163,7 +163,7 @@ enum UserDetailsRoute: Routable {
                 },
                 onSavedUser: { userId in
                     print("Saved User; Should pop back to Home Screen.")
-                    coordinator.goBack(.popToStart(returnValue: UserDetailResult(selectedAction: "Saved", userId: userId)))
+                    coordinator.goBack(.popToStart(finishValue: UserDetailResult(selectedAction: "Saved", userId: userId)))
                 }
             )
                 
