@@ -16,15 +16,15 @@ public struct CoordinatorStack<Route: Routable>: View {
         @Bindable var coordinator = coordinator
         
         NavigationStack(path: $coordinator.path) {
-            coordinator.initialRoute.makeView(with: coordinator)
+            coordinator.initialRoute.makeView(with: coordinator, presentationStyle: .push)
             .navigationDestination(for: Route.self) { route in
-                route.makeView(with: coordinator)
+                route.makeView(with: coordinator, presentationStyle: .push)
             }
             .sheet(item: $coordinator.sheet) { route in
-                route.makeView(with: coordinator)
+                route.makeView(with: coordinator, presentationStyle: .sheet)
             }
             .fullScreenCover(item: $coordinator.fullscreenCover) { route in
-                route.makeView(with: coordinator)
+                route.makeView(with: coordinator, presentationStyle: .fullScreenCover)
             }
         }
     }
@@ -42,15 +42,15 @@ public struct ChildCoordinatorStack<Route: Routable>: View {
     public var body: some View {
         @Bindable var coordinator = coordinator
         
-        coordinator.initialRoute.makeView(with: coordinator)
+        coordinator.initialRoute.makeView(with: coordinator, presentationStyle: .push)
             .navigationDestination(for: Route.self) { route in
-                route.makeView(with: coordinator)
+                route.makeView(with: coordinator, presentationStyle: .push)
             }
             .sheet(item: $coordinator.sheet) { route in
-                route.makeView(with: coordinator)
+                route.makeView(with: coordinator, presentationStyle: .sheet)
             }
             .fullScreenCover(item: $coordinator.fullscreenCover) { route in
-                route.makeView(with: coordinator)
+                route.makeView(with: coordinator, presentationStyle: .fullScreenCover)
             }
     }
 }

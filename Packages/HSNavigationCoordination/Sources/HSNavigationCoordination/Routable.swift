@@ -13,7 +13,7 @@ public protocol Routable: Hashable, Identifiable {
     ///   - presentationStyle: the presentationStyle passed into the `.show(...)` method.  Only relevant if you need to create a child coordinator.
     /// - Returns: a View that has been configured for coordination.  Be sure you have added the coordinatedView modifier to ensure a defaultExit has been applied.
     @MainActor
-    func makeView(with coordinator: Coordinator<Self>) -> Content
+    func makeView(with coordinator: Coordinator<Self>, presentationStyle: NavigationPresentationType) -> Content
 }
 
 public extension Routable {

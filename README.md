@@ -74,10 +74,10 @@ It is perhaps a bit to unpack at the beginning, but this is the first solution t
 ## TODO
  
 - Discussion: There are still some brittle aspects to this:
-    - how 'presentationStyle' gets passed around.  For fullScreenCover you have to know a bit / modify in 2 spots
-        -> Next step: `func makeView(..., presentationStyle: NavigationPresentationType)`
         
     - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but to ideally provide the defaultExit to that modifier in a makeView method?
+    
+    - currently the finish handler doesn't fire when a sheet is dismissed by the user (via a swipe down)
 
 
 ## Acknowledgements

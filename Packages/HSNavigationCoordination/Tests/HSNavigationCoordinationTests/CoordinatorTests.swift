@@ -11,7 +11,7 @@ enum TestRoute: Routable {
     case detail(id: Int)
     case nested(String)
     
-    func makeView(with coordinator: Coordinator<TestRoute>) -> some View {
+    func makeView(with coordinator: Coordinator<TestRoute>, presentationStyle: NavigationPresentationType) -> some View {
         Text("Test View")
     }
 }
@@ -21,7 +21,7 @@ enum ChildTestRoute: Routable {
     case childDetail(id: Int)
     case childSettings
     
-    func makeView(with coordinator: Coordinator<ChildTestRoute>) -> some View {
+    func makeView(with coordinator: Coordinator<ChildTestRoute>, presentationStyle: NavigationPresentationType) -> some View {
         Text("Child Test View")
     }
 }

@@ -19,7 +19,7 @@ enum MainRoute: Routable {
     case settings
     
     @ViewBuilder
-    func makeView(with coordinator: Coordinator<MainRoute>) -> some View {
+    func makeView(with coordinator: Coordinator<MainRoute>, presentationStyle: NavigationPresentationType) -> some View {
         switch self {
         case .home:
             HomeScreenView(
@@ -32,7 +32,7 @@ enum MainRoute: Routable {
                             coordinator.show(MainRoute.settings)
                         },
                         onShowAuth: {
-                            coordinator.show(MainRoute.authFlow, presentationStyle: .fullScreenCover)
+                            coordinator.show(MainRoute.authFlow, presentationStyle: .sheet)
                         }
                     )
                 )
@@ -53,7 +53,7 @@ enum MainRoute: Routable {
                 identifier: "UserDetailsFlow",
                 parentPushRoute: AnyRoutable(self),
                 initialRoute: UserDetailsRoute.userDetail(userId),
-                presentationStyle: .push,
+                presentationStyle: presentationStyle,
                 defaultFinishValue: UserDetailResult(selectedAction: "Cancelled", userId: userId),
                 onFinish: { userInitiated, result in
                     
@@ -111,7 +111,7 @@ enum MainRoute: Routable {
             let child = coordinator.createChildCoordinator(
                 identifier: "AuthFlow",
                 initialRoute: AuthRoutes.login,
-                presentationStyle: .fullScreenCover,
+                presentationStyle: presentationStyle,
                 defaultFinishValue: UserAuthResult(isAuthenticated: false, userId: "---"),
                 onFinish: { userInitiated, result in
                     guard let userResult = result as? UserAuthResult else {
@@ -145,7 +145,7 @@ enum UserDetailsRoute: Routable {
     
     
     @ViewBuilder
-    func makeView(with coordinator: Coordinator<UserDetailsRoute>) -> some View {
+    func makeView(with coordinator: Coordinator<UserDetailsRoute>, presentationStyle: NavigationPresentationType) -> some View {
         switch self {
         case .userDetail(let userId):
             let exits = UserProfileView.ViewModel.NavigationExits(
@@ -203,7 +203,7 @@ enum AuthRoutes: Routable {
     case login
     case register
     
-    func makeView(with coordinator: Coordinator<AuthRoutes>) -> some View {
+    func makeView(with coordinator: Coordinator<AuthRoutes>, presentationStyle: NavigationPresentationType) -> some View {
         FakeAuthFlowView(
             viewModel: .init(
                 exits: .init(
