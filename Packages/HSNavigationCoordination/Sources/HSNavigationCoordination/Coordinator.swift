@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - Navigation Types
 
-public enum NavigationForwardType {
+public enum NavigationPresentationType {
     case push
     case replaceRoot
     case sheet
@@ -12,12 +12,14 @@ public enum NavigationForwardType {
 
 public enum NavigationBackType {
     /// in the case of a child coordinator, it will pop to the screen that pushed it, removing the child.  In the case of a parent, it will pop to root.  Provide an override return value, otherwise the coordinator's .defaultFinishValueKey in the userData will be used.
-    case popToStart(finishValue: Any?)
+    case unwindToStart(finishValue: Any?)
     /// needs to be the same Route type as its coordinator.
-    case popTo(AnyRoutable)
+    case popStackTo(AnyRoutable)
     /// this will only pop within the context of the current coordinator.  If you provide a value for `last` larger than the items on the localStack, it will take you to the initial screen in THIS coordinator, but no futher.  Otherwise consider `popToStart(finishValue: )`
-    case pop(last: Int)
+    case popStack(last: Int)
+    /// Note: This isn't for the child to use to dismiss itself from its parent.  This is how a parent can dismiss its sheet
     case dismissSheet
+    /// Note: This isn't for the child to use to dismiss itself from its parent.  This is how a parent can dismiss its fullScreenCover
     case dismissFullScreenCover
 }
 
@@ -29,7 +31,7 @@ public typealias ViewDefaultFinishBlock = () -> Void
 
 public protocol CoordinatorProtocol: AnyObject {
     var identifier: String { get }
-    func push<Route: Routable>(_ route: Route, type: NavigationForwardType)
+    func show<Route: Routable>(_ route: Route, presentationStyle: NavigationPresentationType)
     func goBack(_ type: NavigationBackType)
     func reset()
     
@@ -49,11 +51,11 @@ public struct AnyCoordinator {
     
     var identifier: String { _coordinator.identifier }
     
-    func push<Route: Routable>(_ route: Route, type: NavigationForwardType = .push) {
-        _coordinator.push(route, type: type)
+    func show<Route: Routable>(_ route: Route, presentationStyle: NavigationPresentationType = .push) {
+        _coordinator.show(route, presentationStyle: presentationStyle)
     }
     
-    func goBack(_ type: NavigationBackType = .pop(last: 1)) {
+    func goBack(_ type: NavigationBackType = .popStack(last: 1)) {
         _coordinator.goBack(type)
     }
     
@@ -160,10 +162,13 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     /// this tracks if you've presented it, but fullscreen cover could have been modified by someone else (back to nil).  Used in the viewDisappeared(...) method
     private var isPresentingFullscreenCover = false
     
+    
+    
     /// if this coordinator is a child and is used for pushing, you need to provide a parent route, the route that ultimately creates a child coordinator and injects that into a ChildCoordinatorStack
     private var parentPushRoute: AnyRoutable?
     private var isChild: Bool = false
-    
+    /// the intended way this coordinator is in use.
+    private let presentationStyle: NavigationPresentationType
     
     // MARK: - Exit Callbacks
     
@@ -171,22 +176,24 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     private var onFinish: CoordinatorFinishBlock?
     
     // MARK: - Initialization
-    public convenience init(identifier: String, initialRoute: Route, onFinish: CoordinatorFinishBlock? = nil) {
+    public convenience init(identifier: String, initialRoute: Route, presentationStyle: NavigationPresentationType, onFinish: CoordinatorFinishBlock? = nil) {
         self.init(
             identifier: identifier,
             initialRoute: initialRoute,
             sharedPath: SharedNavigationPath(NavigationPath()),
+            presentationStyle: presentationStyle,
             onFinish: onFinish
         )
     }
     
     /// Initializer for child coordinators with shared path reference
-    public init(identifier: String, initialRoute: Route, sharedPath: SharedNavigationPath, onFinish: CoordinatorFinishBlock? = nil) {
+    public init(identifier: String, initialRoute: Route, sharedPath: SharedNavigationPath, presentationStyle: NavigationPresentationType, onFinish: CoordinatorFinishBlock? = nil) {
         
         self.identifier = identifier
         self.sharedPath = sharedPath
         self.onFinish = onFinish
         self.initialRoute = initialRoute
+        self.presentationStyle = presentationStyle
     }
    
     
@@ -205,7 +212,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         identifier: String,
         parentPushRoute: AnyRoutable? = nil,
         initialRoute: ChildRoute,
-        navigationForwardType: NavigationForwardType,
+        presentationStyle: NavigationPresentationType,
         defaultFinishValue: Any? = nil,
         onFinish: @escaping (Bool, Any?) -> Void
     ) -> Coordinator<ChildRoute> {
@@ -214,15 +221,29 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             identifier: identifier,
             parentPushRoute: parentPushRoute,
             initialRoute: initialRoute,
-            navigationForwardType: navigationForwardType,
+            presentationStyle: presentationStyle,
             defaultFinishValue: defaultFinishValue
         ) { parent, sharedNavigationPath in
                 
                 return Coordinator<ChildRoute>(
                     identifier: identifier,
                     initialRoute: initialRoute,
-                    sharedPath: navigationForwardType == .push ? sharedPath : .init(NavigationPath()),
+                    sharedPath: presentationStyle == .push ? sharedPath : .init(NavigationPath()),
+                    presentationStyle: presentationStyle,
                     onFinish: { [weak parent] userInitiated, anyResult, thisCoordinator in
+                        
+                        if !userInitiated {
+                            switch presentationStyle {
+                            case .sheet:
+                                parent?.goBack(.dismissSheet)
+                            case .fullScreenCover:
+                                parent?.goBack(.dismissFullScreenCover)
+                            case .push, .replaceRoot:
+                                /// they will have been finished already.
+                                break
+                            }
+                        }
+                        
                         onFinish(userInitiated, anyResult)
                         // Remove the child coordinator when it finishes
                         parent?.removeChildCoordinator(thisCoordinator)
@@ -237,7 +258,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         identifier: String,
         parentPushRoute: AnyRoutable? = nil,
         initialRoute: ChildRoute,
-        navigationForwardType: NavigationForwardType,
+        presentationStyle: NavigationPresentationType,
         defaultFinishValue: Any? = nil,
         builder: (Coordinator<Route>, SharedNavigationPath) -> CoordinatorType
     ) -> CoordinatorType {
@@ -249,16 +270,16 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             return existing
         }
         
-        guard navigationForwardType != .replaceRoot else {
+        guard presentationStyle != .replaceRoot else {
             fatalError("Invalid configuration.  It makes no sense to replace the root view controller with a child view controller.  This could result in a NavigationStack inside a navigation stack.  Behaviour undefined as this hasn't been considered in the technical design.")
         }
         
-        if navigationForwardType == .push && parentPushRoute == nil {
+        if presentationStyle == .push && parentPushRoute == nil {
             fatalError("You must provide a parent route if you are intending to create a Child coordinator that pushes values onto an existing NavigationStack!")
         }
         
         let childCoordinator = builder(self, sharedPath)
-        childCoordinator.parentPushRoute = navigationForwardType == .push ? parentPushRoute : nil
+        childCoordinator.parentPushRoute = presentationStyle == .push ? parentPushRoute : nil
         childCoordinator.userData[childCoordinator.defaultFinishValueKey] = defaultFinishValue
         childCoordinator.isChild = true
         
@@ -281,9 +302,9 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     // MARK: - Navigation Methods
     
-    public func push<T: Routable>(_ route: T, type: NavigationForwardType = .push) {
+    public func show<T: Routable>(_ route: T, presentationStyle: NavigationPresentationType = .push) {
         
-        switch type {
+        switch presentationStyle {
         case .push:
             guard let typedRoute = route as? Route else {
                 fatalError("Misuse!")
@@ -298,7 +319,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             }
             print("[\(String(describing: Route.self))] Replacing Stack to typed route: \(route)")
             wasProgrammaticallyPopped = false
-            self.goBack(.popTo(AnyRoutable(self.initialRoute)))
+            self.goBack(.popStackTo(AnyRoutable(self.initialRoute)))
             self.initialRoute = typedRoute
             
         case .sheet:
@@ -319,16 +340,16 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         }
     }
     
-    public func goBack(_ type: NavigationBackType = .pop(last: 1)) {
+    public func goBack(_ type: NavigationBackType = .popStack(last: 1)) {
         
         switch type {
-        case .pop(let count):
+        case .popStack(let count):
             let actualCount = min(count, localStack.count - 1) // we can only go back to the initial on the stack.
             if actualCount > 0 {
                 wasProgrammaticallyPopped = true // sets a flag for viewDisappeared
                 path.removeLast(actualCount)
             }
-        case .popTo(let toAnyRoute):
+        case .popStackTo(let toAnyRoute):
             guard let typedRoute = toAnyRoute.typedByRoute(as: Route.self) else {
                 fatalError("Misuse.  Read the property description.  You must pass a Route of the same type of this coordinator")
             }
@@ -341,14 +362,20 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             path.removeLast(numToRemove)
             
             
-        case .popToStart(let finishValue):
+        case .unwindToStart(let finishValue):
             self.popAllAndFinish(with: finishValue ?? defaultFinishValue)
             
         case .dismissSheet:
+            if sheet == nil {
+                print("Warning: You're trying to dismiss a sheet that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
+            }
             wasProgrammaticallyPopped = true
             isPresentingSheet = false
             sheet = nil
         case .dismissFullScreenCover:
+            if fullscreenCover == nil {
+                print("Warning: You're trying to dismiss a fullscreenCover that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
+            }
             wasProgrammaticallyPopped = true // this is necessary
             isPresentingFullscreenCover = false
             fullscreenCover = nil
@@ -372,23 +399,26 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         // Clean up child coordinators
         childCoordinators.removeAll()
         
-        // Reset navigation state
-        if !localStack.isEmpty {
-            
-            // now iterate from the back, get the index of when the route does not cast to this Route
-            var numToRemove: Int? = nil
-            for (index, anyRoute) in self.sharedPath.routes.reversed().enumerated() {
-                if anyRoute.typedByRoute(as: Route.self) == nil {
-                    numToRemove = index + (self.isChild ? 1 : 0)
-                    break
+        if presentationStyle == .push || presentationStyle == .replaceRoot {
+            // Reset navigation state
+            if !localStack.isEmpty {
+                
+                // now iterate from the back, get the index of when the route does not cast to this Route
+                var numToRemove: Int? = nil
+                for (index, anyRoute) in self.sharedPath.routes.reversed().enumerated() {
+                    if anyRoute.typedByRoute(as: Route.self) == nil {
+                        numToRemove = index + (self.isChild ? 1 : 0)
+                        break
+                    }
+                }
+                if let numToRemove {
+                    path.removeLast(numToRemove)
+                } else {
+                    path.removeLast(path.count)
                 }
             }
-            if let numToRemove {
-                path.removeLast(numToRemove)
-            } else {
-                path.removeLast(path.count)
-            }
         }
+        
         
         sheet = nil
         fullscreenCover = nil

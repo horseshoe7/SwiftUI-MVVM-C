@@ -26,10 +26,10 @@ enum MainRoute: Routable {
                 viewModel: .init(
                     exits: .init(
                         onShowProfile: { userId in
-                            coordinator.push(MainRoute.profile(userId: userId))
+                            coordinator.show(MainRoute.profile(userId: userId))
                         },
                         onShowSettings: {
-                            coordinator.push(MainRoute.settings)
+                            coordinator.show(MainRoute.settings)
                         },
                         onShowAuth: {
                             coordinator.fullscreenCover = MainRoute.authFlow
@@ -53,7 +53,7 @@ enum MainRoute: Routable {
                 identifier: "UserDetailsFlow",
                 parentPushRoute: AnyRoutable(self),
                 initialRoute: UserDetailsRoute.userDetail(userId),
-                navigationForwardType: .push,
+                presentationStyle: .push,
                 defaultFinishValue: UserDetailResult(selectedAction: "Cancelled", userId: userId),
                 onFinish: { userInitiated, result in
                     
@@ -74,7 +74,7 @@ enum MainRoute: Routable {
                     print("Did Return from Settings")
                 },
                 onReset: {
-                    coordinator.goBack(.popToStart(finishValue: nil))
+                    coordinator.goBack(.unwindToStart(finishValue: nil))
                 }
             )
             SettingsView(
@@ -93,7 +93,7 @@ enum MainRoute: Routable {
                 viewModel: .init(
                     exits: .init(
                         onTappedAuthorize: {
-                            coordinator.push(MainRoute.authFlow, type: .fullScreenCover)
+                            coordinator.show(MainRoute.authFlow, presentationStyle: .fullScreenCover)
                         }
                     )
                 )
@@ -111,7 +111,7 @@ enum MainRoute: Routable {
             let child = coordinator.createChildCoordinator(
                 identifier: "AuthFlow",
                 initialRoute: AuthRoutes.login,
-                navigationForwardType: .fullScreenCover,
+                presentationStyle: .fullScreenCover,
                 defaultFinishValue: UserAuthResult(isAuthenticated: false, userId: "---"),
                 onFinish: { userInitiated, result in
                     guard let userResult = result as? UserAuthResult else {
@@ -121,9 +121,9 @@ enum MainRoute: Routable {
                     print("Returned from Auth Flow: \(userResult.userId) - isAuthenticated: \(userResult.isAuthenticated)")
                     
                     if userResult.isAuthenticated {
-                        coordinator.push(MainRoute.home, type: .replaceRoot)
+                        coordinator.show(MainRoute.home, presentationStyle: .replaceRoot)
                     } else {
-                        coordinator.push(MainRoute.unauthorized, type: .replaceRoot)
+                        coordinator.show(MainRoute.unauthorized, presentationStyle: .replaceRoot)
                     }
                 }
             )
@@ -153,7 +153,7 @@ enum UserDetailsRoute: Routable {
                     }
                 },
                 onEditUser: { userId in
-                    coordinator.push(UserDetailsRoute.editProfile(userId))
+                    coordinator.show(UserDetailsRoute.editProfile(userId))
                 }
             )
             UserProfileView(
@@ -181,7 +181,7 @@ enum UserDetailsRoute: Routable {
                 },
                 onSavedUser: { userId in
                     print("Saved User; Should pop back to Home Screen.")
-                    coordinator.goBack(.popToStart(finishValue: UserDetailResult(selectedAction: "Saved", userId: userId)))
+                    coordinator.goBack(.unwindToStart(finishValue: UserDetailResult(selectedAction: "Saved", userId: userId)))
                 }
             )
                 
@@ -205,9 +205,9 @@ enum AuthRoutes: Routable {
             viewModel: .init(
                 exits: .init(
                     onFinish: { result in
-                        coordinator.goBack(.dismissFullScreenCover)
+                        coordinator.goBack(.unwindToStart(finishValue: result)) // NOT dismissFullscreenCover!
                     }, showSignUp: {
-                        coordinator.push(AuthRoutes.register)
+                        coordinator.show(AuthRoutes.register)
                     }
                 ),
                 dependencies: .init(isSignInView: self == .login)
