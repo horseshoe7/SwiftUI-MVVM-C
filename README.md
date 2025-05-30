@@ -77,4 +77,4 @@ MIT.  Or Beerware if you prefer.  Yes, buy me a beer and don't send any lawyers 
  
 - Discussion: There are still some brittle aspects to this:
     - how 'presentationStyle' gets passed around.  For fullScreenCover you have to know a bit / modify in 2 spots
-    - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but how do I provide the defaultExit to that modifier?
+    - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but to ideally provide the defaultExit to that modifier?
