@@ -184,7 +184,7 @@ final class CoordinatorTests: XCTestCase {
         var childFinishResults: [(userInitiated: Bool, result: Any?)] = []
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
-            parentPushRoute: AnyRoutable(parentRoute),
+            parentSpawnRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
             presentationStyle: .push
         ) { userInitiated, result in
@@ -217,7 +217,7 @@ final class CoordinatorTests: XCTestCase {
         // And: Child coordinator that pushes additional routes
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "limited-child",
-            parentPushRoute: AnyRoutable(parentRoute),
+            parentSpawnRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
             presentationStyle: .push
         ) { _, _ in }
@@ -255,7 +255,7 @@ final class CoordinatorTests: XCTestCase {
         var childFinishResults: [(userInitiated: Bool, result: Any?)] = []
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
-            parentPushRoute: AnyRoutable(parentRoute),
+            parentSpawnRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
             presentationStyle: .push,
             defaultFinishValue: "test-result"
@@ -414,7 +414,7 @@ final class CoordinatorTests: XCTestCase {
 //        // Given: A child coordinator
 //        let childCoordinator = rootCoordinator.createChildCoordinator(
 //            identifier: "child-test",
-//            parentPushRoute: AnyRoutable(parentRoute)
+//            parentSpawnRoute: AnyRoutable(parentRoute)
 //            initialRoute: ChildTestRoute.childHome,
 //            navigationForwardType: .push
 //        ) { _, _ in }
@@ -448,14 +448,14 @@ final class CoordinatorTests: XCTestCase {
     
     func test_resetRootCoordinator() {
         // Given: A root coordinator with complex state
-        let parentPushRoute = TestRoute.profile
-        rootCoordinator.push(parentPushRoute)
+        let parentSpawnRoute = TestRoute.profile
+        rootCoordinator.push(parentSpawnRoute)
         rootCoordinator.show(TestRoute.settings, presentationStyle: .sheet)
         rootCoordinator.show(TestRoute.detail(id: 1), presentationStyle: .fullScreenCover)
         
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
-            parentPushRoute: AnyRoutable(parentPushRoute),
+            parentSpawnRoute: AnyRoutable(parentSpawnRoute),
             initialRoute: ChildTestRoute.childHome,
             presentationStyle: .push
         ) { _, _ in }
@@ -503,13 +503,13 @@ final class CoordinatorTests: XCTestCase {
         // Given: Root coordinator with some navigation
         rootCoordinator.push(TestRoute.profile)
         
-        let parentPushRoute = TestRoute.settings
-        rootCoordinator.push(parentPushRoute)
+        let parentSpawnRoute = TestRoute.settings
+        rootCoordinator.push(parentSpawnRoute)
         
         // When: Creating shared path child coordinator
         let sharedChild = rootCoordinator.createChildCoordinator(
             identifier: "shared-child",
-            parentPushRoute: AnyRoutable(parentPushRoute),
+            parentSpawnRoute: AnyRoutable(parentSpawnRoute),
             initialRoute: ChildTestRoute.childHome,
             presentationStyle: .push
         ) { _, _ in }

@@ -31,6 +31,9 @@ public typealias ViewDefaultFinishBlock = () -> Void
 
 public protocol CoordinatorProtocol: AnyObject {
     var identifier: String { get }
+    var parentSpawnRoute: AnyRoutable? { get }
+    var notifyUserInteractiveFinish: Bool { get set }
+    
     func show<Route: Routable>(_ route: Route, presentationStyle: NavigationPresentationType)
     func goBack(_ type: NavigationBackType)
     func reset()
@@ -50,6 +53,12 @@ public struct AnyCoordinator {
     }
     
     var identifier: String { _coordinator.identifier }
+    
+    var parentSpawnRoute: AnyRoutable? { _coordinator.parentSpawnRoute }
+    var notifyUserInteractiveFinish: Bool {
+        get { _coordinator.notifyUserInteractiveFinish }
+        set { _coordinator.notifyUserInteractiveFinish = newValue }
+    }
     
     func show<Route: Routable>(_ route: Route, presentationStyle: NavigationPresentationType = .push) {
         _coordinator.show(route, presentationStyle: presentationStyle)
@@ -118,10 +127,10 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     public var localStack: [Route] {
         
         // in the even this is a child on the same NavigationStack as its parent.
-        if let parentPushRoute {
-            if !sharedPath.routes.contains(where: { $0 == parentPushRoute }) {
-                // this child has had its views popped. NOT NECESSARILY.  Not if a sheet/fullcover.
-                return []
+        if let parentSpawnRoute {
+            if !sharedPath.routes.contains(where: { $0 == parentSpawnRoute }) {
+                if notifyUserInteractiveFinish { return [] } // because the sheet is nil
+                return [self.initialRoute]
             }
         }
         
@@ -137,8 +146,31 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     /// If this were a UINavigationController, this would be your first view controller in the stack.
     public private(set) var initialRoute: Route
-    public internal(set) var sheet: Route?
-    public internal(set) var fullscreenCover: Route?
+    public internal(set) var sheet: Route? {
+        didSet {
+            if let sheet {
+                print("[\(String(describing: Route.self))] Sheet was set to something")
+            } else {
+                print("[\(String(describing: Route.self))] Sheet was set to nil")
+                if let oldValue, var child = self.findChild(spawnedFrom: AnyRoutable(oldValue)) {
+                    print("[\(String(describing: Route.self))] Found Child.")
+                    //child.goBack(.unwindToStart(finishValue: nil))
+                    child.notifyUserInteractiveFinish = true
+                }
+            }
+        }
+    }
+    public internal(set) var fullscreenCover: Route? {
+        didSet {
+            if let fullscreenCover {
+                print("[\(String(describing: Route.self))] fullscreenCover was set to something")
+            } else {
+                print("[\(String(describing: Route.self))] fullscreenCover was set to nil")
+            }
+        }
+    }
+    
+    public var notifyUserInteractiveFinish: Bool = false
     
     // MARK: - Generic Data Storage
     
@@ -161,11 +193,11 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     private var isPresentingSheet = false
     /// this tracks if you've presented it, but fullscreen cover could have been modified by someone else (back to nil).  Used in the viewDisappeared(...) method
     private var isPresentingFullscreenCover = false
+    /// will get set if the sheet or fullScreenCover was nil and you need to
+    private var modalFinishRoute: AnyRoutable?
     
-    
-    
-    /// if this coordinator is a child and is used for pushing, you need to provide a parent route, the route that ultimately creates a child coordinator and injects that into a ChildCoordinatorStack
-    private var parentPushRoute: AnyRoutable?
+    /// The route of the parent that spawned this Coordinator.  It will be nil if there is no parent, otherwise this should be defined.
+    public private(set) var parentSpawnRoute: AnyRoutable?
     private var isChild: Bool = false
     /// the intended way this coordinator is in use.
     private let presentationStyle: NavigationPresentationType
@@ -176,7 +208,12 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     private var onFinish: CoordinatorFinishBlock?
     
     // MARK: - Initialization
-    public convenience init(identifier: String, initialRoute: Route, presentationStyle: NavigationPresentationType, onFinish: CoordinatorFinishBlock? = nil) {
+    public convenience init(
+        identifier: String,
+        initialRoute: Route,
+        presentationStyle: NavigationPresentationType,
+        onFinish: CoordinatorFinishBlock? = nil
+    ) {
         self.init(
             identifier: identifier,
             initialRoute: initialRoute,
@@ -187,7 +224,13 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     /// Initializer for child coordinators with shared path reference
-    public init(identifier: String, initialRoute: Route, sharedPath: SharedNavigationPath, presentationStyle: NavigationPresentationType, onFinish: CoordinatorFinishBlock? = nil) {
+    public init(
+        identifier: String,
+        initialRoute: Route,
+        sharedPath: SharedNavigationPath,
+        presentationStyle: NavigationPresentationType,
+        onFinish: CoordinatorFinishBlock? = nil
+    ) {
         
         self.identifier = identifier
         self.sharedPath = sharedPath
@@ -202,7 +245,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     /// To create a standard Coordinator that manages the given `ChildRoute`.  If you need to create custom subclasses, see `buildChildCoordinator(...)`
     /// - Parameters:
     ///   - identifier: A unique identifier to provide this coordinator so it can be retrieved properly
-    ///   - parentPushRoute: An Optional value that you have to provide if this child coordinator is to be used in a ChildCoordinationStack
+    ///   - parentSpawnRoute: An Optional value that you have to provide if this child coordinator is to be used in a ChildCoordinationStack
     ///   - initialRoute: The initial route that will be used to render content
     ///   - navigationForwardType: how this coordinator is intended to be presented.
     ///   - defaultFinishValue: if the coordinator finishes due to user interaction and not programmatically, you can provide a default finish value if required.
@@ -210,7 +253,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     /// - Returns: An instance of a Coordinator with the provided ChildRoute, with isChild set to true.
     public func createChildCoordinator<ChildRoute: Routable>(
         identifier: String,
-        parentPushRoute: AnyRoutable? = nil,
+        parentSpawnRoute: AnyRoutable,
         initialRoute: ChildRoute,
         presentationStyle: NavigationPresentationType,
         defaultFinishValue: Any? = nil,
@@ -219,7 +262,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         
         return self.buildChildCoordinator(
             identifier: identifier,
-            parentPushRoute: parentPushRoute,
+            parentSpawnRoute: parentSpawnRoute,
             initialRoute: initialRoute,
             presentationStyle: presentationStyle,
             defaultFinishValue: defaultFinishValue
@@ -256,7 +299,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     /// if you build your own, be sure it removes the child from the parent.  See `createChildCoordinator(...)`'s onFinish implementation for an example.
     public func buildChildCoordinator<ChildRoute: Routable, CoordinatorType: Coordinator<ChildRoute>>(
         identifier: String,
-        parentPushRoute: AnyRoutable? = nil,
+        parentSpawnRoute: AnyRoutable,
         initialRoute: ChildRoute,
         presentationStyle: NavigationPresentationType,
         defaultFinishValue: Any? = nil,
@@ -274,12 +317,9 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             fatalError("Invalid configuration.  It makes no sense to replace the root view controller with a child view controller.  This could result in a NavigationStack inside a navigation stack.  Behaviour undefined as this hasn't been considered in the technical design.")
         }
         
-        if presentationStyle == .push && parentPushRoute == nil {
-            fatalError("You must provide a parent route if you are intending to create a Child coordinator that pushes values onto an existing NavigationStack!")
-        }
         
         let childCoordinator = builder(self, sharedPath)
-        childCoordinator.parentPushRoute = presentationStyle == .push ? parentPushRoute : nil
+        childCoordinator.parentSpawnRoute = parentSpawnRoute
         childCoordinator.userData[childCoordinator.defaultFinishValueKey] = defaultFinishValue
         childCoordinator.isChild = true
         
@@ -291,6 +331,19 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     
     public func removeChildCoordinator(_ child: AnyCoordinator) {
         childCoordinators[child.identifier] = nil
+    }
+    
+    func findChild(spawnedFrom parentRoute: AnyRoutable?) -> AnyCoordinator? {
+        
+        guard let parentRoute else { return nil }
+        
+        print("[\(String(describing: Route.self))] Looking for child spawned with \(parentRoute.identifier)")
+        for (_, coordinator) in self.childCoordinators {
+            if coordinator.parentSpawnRoute == parentRoute {
+                return coordinator
+            }
+        }
+        return nil
     }
     
     // MARK: - Finish Methods
@@ -370,14 +423,14 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             
         case .dismissSheet:
             if sheet == nil {
-                print("Warning: You're trying to dismiss a sheet that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
+                print("[\(String(describing: Route.self))] Warning: You're trying to dismiss a sheet that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
             }
             wasProgrammaticallyPopped = true
             isPresentingSheet = false
             sheet = nil
         case .dismissFullScreenCover:
             if fullscreenCover == nil {
-                print("Warning: You're trying to dismiss a fullscreenCover that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
+                print("[\(String(describing: Route.self))] Warning: You're trying to dismiss a fullscreenCover that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
             }
             wasProgrammaticallyPopped = true // this is necessary
             isPresentingFullscreenCover = false
@@ -469,10 +522,18 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
             wasProgrammaticallyPopped = false
             return
         }
-
+        
         
         if let typedRoute = route.typedByRoute(as: Route.self) {
-             
+            
+            if self.notifyUserInteractiveFinish {
+                
+                defaultExit?()
+                self.finish(with: defaultFinishValue, userInitiated: true)
+                self.notifyUserInteractiveFinish = false
+                return
+            }
+            
             let isInNavPath = (
                 sharedPath.routes.contains(where: { $0.identifier == typedRoute.identifier }) ||
                 localStack.contains(where: { $0 == typedRoute })
@@ -490,8 +551,10 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
                     print("defaultExit will be called then the onFinish method will be called.")
                     defaultExit?()
                     
-                    self.finish(with: defaultFinishValue, userInitiated: true)
+                    //self.finish(with: defaultFinishValue, userInitiated: true)
                 }
+                
+                
             }
         } else {
             // this route was not in the localStack, which suggests you popped back further than the whole stack.
