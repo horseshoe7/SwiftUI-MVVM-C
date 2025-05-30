@@ -89,7 +89,22 @@ enum MainRoute: Routable {
             )
             
         case .unauthorized:
-            fatalError("Implement me!")
+            UnauthorizedView(
+                viewModel: .init(
+                    exits: .init(
+                        onTappedAuthorize: {
+                            coordinator.push(MainRoute.authFlow, type: .fullScreenCover)
+                        }
+                    )
+                )
+            )
+            .coordinatedView(
+                coordinator: AnyCoordinator(coordinator),
+                route: AnyRoutable(self),
+                defaultExit: {
+                    print("This view should have no default exit as it becomes a root view.")
+                }
+            )
             
         case .authFlow:
             
@@ -97,13 +112,16 @@ enum MainRoute: Routable {
                 identifier: "AuthFlow",
                 initialRoute: AuthRoutes.login,
                 navigationForwardType: .fullScreenCover,
+                defaultFinishValue: UserAuthResult(isAuthenticated: false, userId: "---"),
                 onFinish: { userInitiated, result in
-                    if result != nil {
-                        guard let userResult = result as? UserAuthResult else {
-                            print("The Specification has changed!")
-                            return
-                        }
-                        print("Returned from Auth Flow: \(userResult.userId) - isAuthenticated: \(userResult.isAuthenticated)")
+                    guard let userResult = result as? UserAuthResult else {
+                        print("The Specification has changed!")
+                        return
+                    }
+                    print("Returned from Auth Flow: \(userResult.userId) - isAuthenticated: \(userResult.isAuthenticated)")
+                    
+                    if userResult.isAuthenticated {
+                        coordinator.push(MainRoute.home, type: .replaceRoot)
                     } else {
                         coordinator.push(MainRoute.unauthorized, type: .replaceRoot)
                     }
@@ -111,7 +129,7 @@ enum MainRoute: Routable {
             )
             
             // a CoordinatorStack because it is its own "navigation controller" and not on top of an existing one.
-            CoordinatorStack<UserDetailsRoute>()
+            CoordinatorStack<AuthRoutes>()
                 .environment(child) // uses the initialRoute to create the View.
         }
     }
@@ -183,12 +201,24 @@ enum AuthRoutes: Routable {
     case register
     
     func makeView(with coordinator: Coordinator<AuthRoutes>) -> some View {
-        fatalError("Implement Views!")
+        FakeAuthFlowView(
+            viewModel: .init(
+                exits: .init(
+                    onFinish: { result in
+                        coordinator.goBack(.dismissFullScreenCover)
+                    }, showSignUp: {
+                        coordinator.push(AuthRoutes.register)
+                    }
+                ),
+                dependencies: .init(isSignInView: self == .login)
+            )
+        )
+        .coordinatedView(
+            coordinator: AnyCoordinator(coordinator),
+            route: AnyRoutable(self),
+            defaultExit: nil
+        )
     }
 }
 
-//// Example payload types for exit callbacks
-struct UserAuthResult {
-    let isAuthenticated: Bool
-    let userId: String
-}
+
