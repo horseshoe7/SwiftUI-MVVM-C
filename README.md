@@ -23,6 +23,8 @@ As a result, for some years I have been using SwiftUI to make "screen level" vie
 
 - Allows for multiple flows working on one NavigationStack
 - Provides a mechanism for callbacks when a view is dismissed 'non-programmatically' such as a Back button or a InteractivePopGesture (on a navigation stack).
+- Allows for deeper customization of Coordinator types, but also makes it easy to pass data from Screen to Coordinator.
+
 
 ## Usage
 
@@ -39,7 +41,11 @@ The app is a MVVM-C architecture.  You can see that the Coordinator is essential
 
 - Because Coordinator types are classes, you can create subclasses that store values throughout your flow.  So one screen can finish with a value, store it, then move to another screen, etc. then at some point finish.
 
-   
+### Passing Data between screen flows
+
+- See `DemoRoutes.swift` which is essentially all the app's routes and their coordinated flows to see how to use Coordinators
+
+- In the AuthRoutes.makeView implementation, you can see how the result of one screen can set data on the coordinator, then be retrieved on another screen.  This way we maintain the idea that screens only care about themselves, and notify the coordinator when they are done.
 
 
 ## Nomenclature
@@ -68,9 +74,7 @@ MIT.  Or Beerware if you prefer.  Yes, buy me a beer and don't send any lawyers 
 
 
 ## TODO
-
-X Ensure that finishCoordinator callback is invoked appropriately when viewDisappeared is called. 
-- Ensure you can use exits to modify userData on the Coordinator.
+ 
 - Discussion: There are still some brittle aspects to this:
     - how 'presentationStyle' gets passed around.  For fullScreenCover you have to know a bit / modify in 2 spots
     - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but how do I provide the defaultExit to that modifier?

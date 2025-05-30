@@ -16,7 +16,7 @@ struct FakeAuthFlowView: View {
                 if viewModel.isSignInView {
                     Text("Sign In")
                 } else {
-                    Text("Sign Up")
+                    Text(viewModel.userPrompt)
                 }
                 
                 Spacer()
@@ -62,7 +62,10 @@ private extension FakeAuthFlowView.ViewModel {
                 onFinish: { _ in },
                 showSignUp: {}
             ),
-            dependencies: .init(isSignInView: true)
+            dependencies: .init(
+                isSignInView: true,
+                userPromptName: nil
+            )
         )
     }
 }

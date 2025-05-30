@@ -210,10 +210,14 @@ enum AuthRoutes: Routable {
                     onFinish: { result in
                         coordinator.goBack(.unwindToStart(finishValue: result)) // NOT dismissFullscreenCover!
                     }, showSignUp: {
+                        coordinator.userData["userPrompt"] = "Stephen" // Here we demonstrate how the Coordinator can store data in between screen flows.... (see below)
                         coordinator.show(AuthRoutes.register)
                     }
                 ),
-                dependencies: .init(isSignInView: self == .login)
+                dependencies: .init(
+                    isSignInView: self == .login,
+                    userPromptName: coordinator.userData["userPrompt"] as? String // ...and then retrieved in later screens
+                )
             )
         )
         .coordinatedView(

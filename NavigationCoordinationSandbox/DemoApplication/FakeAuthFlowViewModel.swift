@@ -11,10 +11,12 @@ extension FakeAuthFlowView {
     @MainActor final class ViewModel: ObservableObject {
         
         let isSignInView: Bool
+        let userPrompt: String
         
         // MARK: Dependencies
         struct Dependencies {
             let isSignInView: Bool
+            let userPromptName: String?
         }
         private let dependencies: Dependencies
         
@@ -32,6 +34,7 @@ extension FakeAuthFlowView {
             self.exits = exits
             
             self.isSignInView = dependencies.isSignInView
+            self.userPrompt = "Sign Up, \(dependencies.userPromptName ?? "New Guy")"
         }
         
         // MARK: Action Definitions
