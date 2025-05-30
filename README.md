@@ -28,18 +28,25 @@ As a result, for some years I have been using SwiftUI to make "screen level" vie
 
 ## Usage
 
-See the demo Application Code, starting at NavigationCoordinationSandboxApp.
+I recommend downloading the code, and running the app to see generally the functionality that has been made possible with these Coordinator patterns.
+
+Then see the demo Application Code, starting at NavigationCoordinationSandboxApp.
 
 - You can see we provide an initial route in the appCoordinator that is used to build the initial view.
+
 - We provide this as the environment to a CoordinatorStack (which is a NavigationStack with a Coordinator that manages its NavigationPath).
 
 The app is a MVVM-C architecture.  You can see that the Coordinator is essentially delegating view creation to the Routes you define.  (see `DemoRoutes.swift`)
 
-- In our case, we are faking an app that can view a user profile (and that flow is managed by a Coordinator), have an additional screen for "Settings".  These are all just to show how this app is architected.
+- In our case, we are faking an app that can view a user profile (and that flow is managed by a Coordinator), have an additional screen for "Settings" and a modal screen flow for authentication.  These are all just to show how this app is architected.
 
 - You can see that when a view is built, a ViewModel is created, and supplied to its view.  In the ViewModel, we define "Exits".  The idea is that a View does not want to know anything else about the app's architecture; it exits to accomplish tasks on that view, and when it's finished, it "exits".  (Depending on how it exits, with or without a payload.)
 
 - Because Coordinator types are classes, you can create subclasses that store values throughout your flow.  So one screen can finish with a value, store it, then move to another screen, etc. then at some point finish.
+
+- You can see in the makeView methods, that we add the 'coordinatedView' modifier to indicate what the 'defaultExit' will be, in the event the user initiates 'going back', such as back buttons or swipes.  You may need to pass state or do some cleanup in these scenarios.
+
+
 
 ### Passing Data between screen flows
 
@@ -55,14 +62,23 @@ A "ChildCoordinatorStack" is one where you can use the same NavigationStack to p
 A "Child Coordinator" is less clearly defined, but is one that handles navigation flows, just like a regular Coordinator. 
 
 
-## Suggestions for Future Work / To Do
-
-- Expand this demo to showcase the functionality of sheets and fullcover (this hasn't really been explored or tested yet.)
-
-
 ## Feedback Welcome!
 
 oconnor.freelance@gmail.com or via github.com/horseshoe7
+
+See the TODO Items below if you want to get involved in the discussion, or just let me know what you think.
+
+It is perhaps a bit to unpack at the beginning, but this is the first solution to my Coordinator requirements that I've been able to adequately solve with SwiftUI.  Up until now, I've been building UIKit apps that use UIHostingControllers for screens built with SwiftUI.
+
+
+## TODO
+ 
+- Discussion: There are still some brittle aspects to this:
+    - how 'presentationStyle' gets passed around.  For fullScreenCover you have to know a bit / modify in 2 spots
+        -> Next step: `func makeView(..., presentationStyle: NavigationPresentationType)`
+        
+    - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but to ideally provide the defaultExit to that modifier in a makeView method?
+
 
 ## Acknowledgements
 
@@ -71,10 +87,3 @@ Thank you to Tiago Henriques and his [blog post on the topic ](https://www.tiago
 ## LICENSE
 
 MIT.  Or Beerware if you prefer.  Yes, buy me a beer and don't send any lawyers after me.
-
-
-## TODO
- 
-- Discussion: There are still some brittle aspects to this:
-    - how 'presentationStyle' gets passed around.  For fullScreenCover you have to know a bit / modify in 2 spots
-    - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but to ideally provide the defaultExit to that modifier?
