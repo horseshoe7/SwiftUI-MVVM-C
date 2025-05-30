@@ -136,9 +136,9 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     public let identifier: String
     
     /// If this were a UINavigationController, this would be your first view controller in the stack.
-    public var initialRoute: Route
-    public var sheet: Route?
-    public var fullscreenCover: Route?
+    public private(set) var initialRoute: Route
+    public internal(set) var sheet: Route?
+    public internal(set) var fullscreenCover: Route?
     
     // MARK: - Generic Data Storage
     
@@ -301,6 +301,9 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     }
     
     // MARK: - Navigation Methods
+    public func push<T: Routable>(_ route: T) {
+        self.show(route, presentationStyle: .push)
+    }
     
     public func show<T: Routable>(_ route: T, presentationStyle: NavigationPresentationType = .push) {
         

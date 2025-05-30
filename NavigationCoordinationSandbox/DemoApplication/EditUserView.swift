@@ -5,18 +5,25 @@ struct EditUserView: View {
     @StateObject var viewModel: ViewModel
     
     var body: some View {
-        VStack {
-            Text("EditUserView")
-            Text("Editing UserID: \(viewModel.userId)")
+        ZStack {
+            Color.white
+                .ignoresSafeArea()
+            Color.blue.opacity(0.4)
+                .ignoresSafeArea()
             
-            Button(
-                action: {
-                    viewModel.sendAction(.didPressSave)
-                },
-                label: {
-                    Text("Save and Exit Flow")
-                }
-            )
+            VStack {
+                Text("EditUserView")
+                Text("Editing UserID: \(viewModel.userId)")
+                
+                Button(
+                    action: {
+                        viewModel.sendAction(.didPressSave)
+                    },
+                    label: {
+                        Text("Save and Exit Flow")
+                    }
+                )
+            }
         }
         .onAppear {
             viewModel.sendAction(.viewDidAppear)

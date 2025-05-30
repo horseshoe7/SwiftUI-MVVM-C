@@ -32,7 +32,7 @@ enum MainRoute: Routable {
                             coordinator.show(MainRoute.settings)
                         },
                         onShowAuth: {
-                            coordinator.fullscreenCover = MainRoute.authFlow
+                            coordinator.show(MainRoute.authFlow, presentationStyle: .fullScreenCover)
                         }
                     )
                 )
@@ -127,6 +127,9 @@ enum MainRoute: Routable {
                     }
                 }
             )
+            
+            // the combination of a .fullScreenCover presentation style above, and a CoordinatorStack here below
+            // means that it will present a NavigationStack with its own navigation path modally.
             
             // a CoordinatorStack because it is its own "navigation controller" and not on top of an existing one.
             CoordinatorStack<AuthRoutes>()

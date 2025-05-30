@@ -5,18 +5,23 @@ struct UserProfileView: View {
     @StateObject var viewModel: ViewModel
     
     var body: some View {
-        VStack {
-            Text("UserProfileView")
-            Text("UserID: \(viewModel.userId)")
+        ZStack {
+            Color.yellow
+                .ignoresSafeArea()
             
-            Button(
-                action: {
-                    viewModel.sendAction(.didPressEditUser)
-                },
-                label: {
-                    Text("Edit User")
-                }
-            )
+            VStack {
+                Text("UserProfileView")
+                Text("UserID: \(viewModel.userId)")
+                
+                Button(
+                    action: {
+                        viewModel.sendAction(.didPressEditUser)
+                    },
+                    label: {
+                        Text("Edit User")
+                    }
+                )
+            }
         }
         .onAppear {
             viewModel.sendAction(.viewDidAppear)

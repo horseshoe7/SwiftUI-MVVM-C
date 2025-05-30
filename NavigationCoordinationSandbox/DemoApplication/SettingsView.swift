@@ -5,18 +5,23 @@ struct SettingsView: View {
     @StateObject var viewModel: ViewModel
     
     var body: some View {
-        VStack {
-            Text("Settings View")
-                .navigationTitle("Settings")
+        ZStack {
+            Color.gray
+                .ignoresSafeArea()
             
-            Button(
-                action: {
-                    viewModel.sendAction(.didTapReset)
-                },
-                label: {
-                    Text("Reset Stack")
-                }
-            )
+            VStack {
+                Text("Settings View")
+                    .navigationTitle("Settings")
+                
+                Button(
+                    action: {
+                        viewModel.sendAction(.didTapReset)
+                    },
+                    label: {
+                        Text("Reset Stack")
+                    }
+                )
+            }
         }
         .onAppear {
             viewModel.sendAction(.viewDidAppear)

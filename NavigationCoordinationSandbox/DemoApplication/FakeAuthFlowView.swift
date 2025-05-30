@@ -5,33 +5,40 @@ struct FakeAuthFlowView: View {
     @StateObject var viewModel: ViewModel
     
     var body: some View {
-        VStack {
-            Spacer()
-            if viewModel.isSignInView {
-                Text("Sign In")
-            } else {
-                Text("Sign Up")
-            }
+        ZStack {
+            Color.white
+                .ignoresSafeArea()
+            Color.green.opacity(0.4)
+                .ignoresSafeArea()
             
-            Spacer()
-            Button(action: {
-                viewModel.sendAction(.tappedSuccess)
-            }, label: {
-                Text("Simulate Success")
-            })
-            Button(action: {
-                viewModel.sendAction(.tappedFailed)
-            }, label: {
-                Text("Simulate Fail")
-            })
-            if viewModel.isSignInView {
-                Button(action: {
-                    viewModel.sendAction(.tappedSignUp)
-                }, label: {
+            VStack {
+                Spacer()
+                if viewModel.isSignInView {
+                    Text("Sign In")
+                } else {
                     Text("Sign Up")
+                }
+                
+                Spacer()
+                Button(action: {
+                    viewModel.sendAction(.tappedSuccess)
+                }, label: {
+                    Text("Simulate Success")
                 })
+                Button(action: {
+                    viewModel.sendAction(.tappedFailed)
+                }, label: {
+                    Text("Simulate Fail")
+                })
+                if viewModel.isSignInView {
+                    Button(action: {
+                        viewModel.sendAction(.tappedSignUp)
+                    }, label: {
+                        Text("Sign Up")
+                    })
+                }
+                Spacer()
             }
-            Spacer()
         }
         .onAppear {
             viewModel.sendAction(.viewDidAppear)

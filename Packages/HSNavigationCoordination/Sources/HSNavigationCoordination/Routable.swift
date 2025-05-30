@@ -6,6 +6,12 @@ import SwiftUI
 public protocol Routable: Hashable, Identifiable {
     associatedtype Content: View
     
+    
+    /// A factory method where you create and configure your view/viewModel and exits.
+    /// - Parameters:
+    ///   - coordinator: The coordinator that requires the view for a route that was invoked with `.show(...)`
+    ///   - presentationStyle: the presentationStyle passed into the `.show(...)` method.  Only relevant if you need to create a child coordinator.
+    /// - Returns: a View that has been configured for coordination.  Be sure you have added the coordinatedView modifier to ensure a defaultExit has been applied.
     @MainActor
     func makeView(with coordinator: Coordinator<Self>) -> Content
 }

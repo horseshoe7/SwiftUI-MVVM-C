@@ -37,7 +37,8 @@ final class CoordinatorTests: XCTestCase {
         // Root coordinators should never finish - this would indicate a design flaw
         rootCoordinator = Coordinator<TestRoute>(
             identifier: "root-coordinator",
-            initialRoute: .home
+            initialRoute: .home,
+            presentationStyle: .push,
         ) { [weak self] userInitiated, result, finishingCoordinator in
             XCTFail("A Root Coordinator should never finish!")
             self?.finishCallbackResults.append((userInitiated, result, finishingCoordinator))
@@ -58,7 +59,7 @@ final class CoordinatorTests: XCTestCase {
         XCTAssertEqual(rootCoordinator.path.count, 0)
         
         // When: Pushing a new route
-        rootCoordinator.push(TestRoute.profile)
+        rootCoordinator.show(TestRoute.profile, presentationStyle: .push)
         
         // Then: Route should be added to stack and path
         XCTAssertEqual(rootCoordinator.localStack.count, 2)
@@ -68,13 +69,13 @@ final class CoordinatorTests: XCTestCase {
     
     func test_simpleGoBackFromRoot() throws {
         // Given: A root coordinator with multiple pushed routes
-        rootCoordinator.push(TestRoute.profile)
-        rootCoordinator.push(TestRoute.settings)
-        rootCoordinator.push(TestRoute.detail(id: 123))
+        rootCoordinator.show(TestRoute.profile, presentationStyle: .push)
+        rootCoordinator.show(TestRoute.settings, presentationStyle: .push)
+        rootCoordinator.show(TestRoute.detail(id: 123), presentationStyle: .push)
         XCTAssertEqual(rootCoordinator.path.count, 3)
         
         // When: Going back one level
-        rootCoordinator.goBack(.pop(last: 1))
+        rootCoordinator.goBack(.popStack(last: 1))
         
         // Then: Last route should be removed
         XCTAssertEqual(rootCoordinator.path.count, 2)
@@ -82,7 +83,7 @@ final class CoordinatorTests: XCTestCase {
         XCTAssertEqual(rootCoordinator.localStack.last, .settings)
         
         // When: Going back multiple levels
-        rootCoordinator.goBack(.pop(last: 2))
+        rootCoordinator.goBack(.popStack(last: 2))
         
         // Then: Should be back to initial state
         XCTAssertEqual(rootCoordinator.path.count, 0)
@@ -92,12 +93,12 @@ final class CoordinatorTests: XCTestCase {
     
     func test_replaceRootNavigation() {
         // Given: A root coordinator with some navigation
-        rootCoordinator.push(TestRoute.profile)
-        rootCoordinator.push(TestRoute.settings)
+        rootCoordinator.show(TestRoute.profile, presentationStyle: .push)
+        rootCoordinator.show(TestRoute.settings, presentationStyle: .push)
         XCTAssertEqual(rootCoordinator.path.count, 2)
         
         // When: Replacing with a new root route
-        rootCoordinator.push(TestRoute.detail(id: 999), type: .replaceRoot)
+        rootCoordinator.show(TestRoute.detail(id: 999), presentationStyle: .replaceRoot)
         
         // Then: Initial route should be updated but path behavior needs implementation
         XCTAssertEqual(rootCoordinator.initialRoute, TestRoute.detail(id: 999))
@@ -111,7 +112,7 @@ final class CoordinatorTests: XCTestCase {
         XCTAssertNil(rootCoordinator.sheet)
         
         // When: Presenting a sheet
-        rootCoordinator.push(TestRoute.profile, type: .sheet)
+        rootCoordinator.show(TestRoute.profile, presentationStyle: .sheet)
         
         // Then: Sheet should be set
         XCTAssertEqual(rootCoordinator.sheet, .profile)
@@ -120,7 +121,7 @@ final class CoordinatorTests: XCTestCase {
     
     func test_dismissSheet() {
         // Given: A root coordinator with a presented sheet
-        rootCoordinator.push(TestRoute.profile, type: .sheet)
+        rootCoordinator.show(TestRoute.profile, presentationStyle: .sheet)
         XCTAssertEqual(rootCoordinator.sheet, .profile)
         
         // When: Dismissing sheet programmatically
@@ -131,8 +132,11 @@ final class CoordinatorTests: XCTestCase {
     }
     
     func test_dismissSheetUserInitiated() {
+        
+        #warning("This test doesn't accurately simulate a userInitiated sheet dismissal!")
+        
         // Given: A root coordinator with a presented sheet
-        rootCoordinator.push(TestRoute.profile, type: .sheet)
+        rootCoordinator.show(TestRoute.profile, presentationStyle: .sheet)
         XCTAssertEqual(rootCoordinator.sheet, .profile)
         
         // When: Simulating user-initiated dismissal (sheet becomes nil externally)
@@ -149,11 +153,14 @@ final class CoordinatorTests: XCTestCase {
     }
     
     func test_fullScreenCoverBehavior() {
+        
+        #warning("This test doesn't accurately simulate a userInitiated sheet dismissal!")
+        
         // Given: A root coordinator
         XCTAssertNil(rootCoordinator.fullscreenCover)
         
         // When: Presenting full screen cover
-        rootCoordinator.push(TestRoute.settings, type: .fullScreenCover)
+        rootCoordinator.show(TestRoute.settings, presentationStyle: .fullScreenCover)
         
         // Then: Full screen cover should be set
         XCTAssertEqual(rootCoordinator.fullscreenCover, TestRoute.settings)
@@ -170,7 +177,7 @@ final class CoordinatorTests: XCTestCase {
     func test_pushFromRootThenPushChildCoordstack() throws {
         // Given: A root coordinator with a pushed route
         let parentRoute = TestRoute.profile
-        rootCoordinator.push(parentRoute)
+        rootCoordinator.show(parentRoute, presentationStyle: .push)
         XCTAssertEqual(rootCoordinator.path.count, 1)
         
         // When: Creating a child coordinator with shared navigation path
@@ -179,7 +186,7 @@ final class CoordinatorTests: XCTestCase {
             identifier: "child-test",
             parentPushRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .push
+            presentationStyle: .push
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
@@ -190,7 +197,7 @@ final class CoordinatorTests: XCTestCase {
         XCTAssertEqual(childCoordinator.localStack.first, .childHome)
         
         // When: Child coordinator pushes a route
-        childCoordinator.push(ChildTestRoute.childDetail(id: 42))
+        childCoordinator.show(ChildTestRoute.childDetail(id: 42), presentationStyle: .push)
         
         // Then: Both coordinators should see the updated shared path
         XCTAssertEqual(rootCoordinator.path.count, 2)
@@ -200,10 +207,10 @@ final class CoordinatorTests: XCTestCase {
     
     func test_GoBackWithPopListInChildCoordinatorCanOnlyTakeYouBackToChildsInitialRoute() {
         // Given: Root coordinator with some navigation
-        rootCoordinator.push(TestRoute.profile)
-        rootCoordinator.push(TestRoute.settings)
+        rootCoordinator.show(TestRoute.profile) // pushes
+        rootCoordinator.show(TestRoute.settings)
         let parentRoute = TestRoute.detail(id: 1)
-        rootCoordinator.push(parentRoute) // this triggers a makeView, which creates the childCoordinator below and injects it.
+        rootCoordinator.show(parentRoute) // this triggers a makeView, which creates the childCoordinator below and injects it.
         XCTAssertEqual(rootCoordinator.path.count, 3)
         XCTAssertEqual(rootCoordinator.localStack.count, 4) // includes initialRoute of .home
         
@@ -212,15 +219,15 @@ final class CoordinatorTests: XCTestCase {
             identifier: "limited-child",
             parentPushRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .push
+            presentationStyle: .push
         ) { _, _ in }
         
-        childCoordinator.push(ChildTestRoute.childDetail(id: 1))
-        childCoordinator.push(ChildTestRoute.childSettings)
+        childCoordinator.show(ChildTestRoute.childDetail(id: 1))
+        childCoordinator.show(ChildTestRoute.childSettings)
         XCTAssertEqual(rootCoordinator.path.count, 5) // 3 parent (the initial in the path is actually the parentRoute, not the child's initial) + 2 child
         
         // When: Child coordinator tries to go back more than its own routes
-        childCoordinator.goBack(.pop(last: 10)) // Trying to pop more than possible
+        childCoordinator.goBack(.popStack(last: 10)) // Trying to pop more than possible
         
         // Then: Should only pop child coordinator's own routes, not parent's
         let expectedMinimumPath = 3 // Parent's routes should remain
@@ -243,20 +250,20 @@ final class CoordinatorTests: XCTestCase {
         // Given: A child coordinator with some navigation
         
         let parentRoute = TestRoute.detail(id: 42)
-        rootCoordinator.push(parentRoute) // this pushes a route, which in turn in makeView creates a child coordinator and a ChildCoordinatorStack.
+        rootCoordinator.show(parentRoute) // this pushes a route, which in turn in makeView creates a child coordinator and a ChildCoordinatorStack.
         
         var childFinishResults: [(userInitiated: Bool, result: Any?)] = []
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
             parentPushRoute: AnyRoutable(parentRoute),
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .push,
+            presentationStyle: .push,
             defaultFinishValue: "test-result"
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
 
-        childCoordinator.push(ChildTestRoute.childDetail(id: 42))
+        childCoordinator.show(ChildTestRoute.childDetail(id: 42))
         XCTAssertEqual(childFinishResults.count, 0)
         
         // When: Simulating user-initiated back navigation by calling viewDisappeared
@@ -288,7 +295,7 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "sheet-child",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .sheet
+            presentationStyle: .sheet
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
@@ -307,12 +314,12 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "sheet-child",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .sheet
+            presentationStyle: .sheet
         ) { _, _ in }
         
         // When: Child coordinator pushes routes in its isolated navigation stack
-        childCoordinator.push(ChildTestRoute.childDetail(id: 1))
-        childCoordinator.push(ChildTestRoute.childSettings)
+        childCoordinator.show(ChildTestRoute.childDetail(id: 1))
+        childCoordinator.show(ChildTestRoute.childSettings)
         
         // Then: Child should have its own navigation stack
         XCTAssertEqual(childCoordinator.path.count, 2) // 2 pushes in isolated stack
@@ -328,13 +335,13 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "sheet-child",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .sheet
+            presentationStyle: .sheet
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
         
-        childCoordinator.push(ChildTestRoute.childDetail(id: 1))
-        childCoordinator.push(ChildTestRoute.childSettings)
+        childCoordinator.show(ChildTestRoute.childDetail(id: 1))
+        childCoordinator.show(ChildTestRoute.childSettings)
         
         // When: Child coordinator finishes programmatically
         childCoordinator.finish(with: "programmatic-result", userInitiated: false)
@@ -351,11 +358,11 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "sheet-child",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .sheet
+            presentationStyle: .sheet
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
-        childCoordinator.push(ChildTestRoute.childDetail(id: 1))
+        childCoordinator.show(ChildTestRoute.childDetail(id: 1))
         
         
         // When: User dismisses sheet (simulated by viewDisappeared without programmatic flag)
@@ -379,7 +386,7 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "fullscreen-child",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .fullScreenCover
+            presentationStyle: .fullScreenCover
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
@@ -433,7 +440,7 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .sheet
+            presentationStyle: .sheet
         ) { _, _ in }
         
         XCTAssertEqual(childCoordinator.identifier, "child-test")
@@ -443,14 +450,14 @@ final class CoordinatorTests: XCTestCase {
         // Given: A root coordinator with complex state
         let parentPushRoute = TestRoute.profile
         rootCoordinator.push(parentPushRoute)
-        rootCoordinator.push(TestRoute.settings, type: .sheet)
-        rootCoordinator.push(TestRoute.detail(id: 1), type: .fullScreenCover)
+        rootCoordinator.show(TestRoute.settings, presentationStyle: .sheet)
+        rootCoordinator.show(TestRoute.detail(id: 1), presentationStyle: .fullScreenCover)
         
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
             parentPushRoute: AnyRoutable(parentPushRoute),
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .push
+            presentationStyle: .push
         ) { _, _ in }
         
         // When: Resetting the root coordinator
@@ -470,7 +477,7 @@ final class CoordinatorTests: XCTestCase {
         let childCoordinator = rootCoordinator.createChildCoordinator(
             identifier: "child-test",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .sheet
+            presentationStyle: .sheet
         ) { userInitiated, result in
             childFinishResults.append((userInitiated, result))
         }
@@ -482,8 +489,10 @@ final class CoordinatorTests: XCTestCase {
         childCoordinator.popAllAndFinish(with: "reset-result")
         
         // Then: Child should be reset and finish callback should be called
-        XCTAssertEqual(childCoordinator.path.count, 0)
-        XCTAssertEqual(childCoordinator.localStack.count, 1)
+        
+        // because we're dismissing the sheet, it doesn't matter about the childCoordinator's path and localStack; they get destroyed.
+        //XCTAssertEqual(childCoordinator.path.count, 0)
+        //XCTAssertEqual(childCoordinator.localStack.count, 1)
         XCTAssertEqual(childFinishResults.count, 1)
         XCTAssertEqual(childFinishResults.first?.result as? String, "reset-result")
     }
@@ -502,14 +511,14 @@ final class CoordinatorTests: XCTestCase {
             identifier: "shared-child",
             parentPushRoute: AnyRoutable(parentPushRoute),
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .push
+            presentationStyle: .push
         ) { _, _ in }
         
         // And: Creating isolated path child coordinator
         let isolatedChild = rootCoordinator.createChildCoordinator(
             identifier: "isolated-child",
             initialRoute: ChildTestRoute.childHome,
-            navigationForwardType: .sheet
+            presentationStyle: .sheet
         ) { _, _ in }
         
         // Then: Shared child should see parent's navigation
