@@ -11,7 +11,7 @@ public enum NavigationPresentationType {
 }
 
 public enum NavigationBackType {
-    /// in the case of a child coordinator, it will pop to the screen that pushed it, removing the child.  In the case of a parent, it will pop to root.  Provide an override return value, otherwise the coordinator's .defaultFinishValueKey in the userData will be used.
+    /// in the case of a child coordinator, it will pop to the screen that pushed it, removing the child.  In the case of a parent, it will pop to root.  Provide an override return value, otherwise the coordinator's .defaultFinishValue in the userData will be used.
     case unwindToStart(finishValue: Any?)
     /// needs to be the same Route type as its coordinator.
     case popStackTo(AnyRoutable)
@@ -30,8 +30,11 @@ public typealias ViewDefaultFinishBlock = () -> Void
 // MARK: - Type-erased Coordinator
 
 public protocol CoordinatorProtocol: AnyObject {
+    /// required for subsequent retrieval
     var identifier: String { get }
+    /// the route that was pushed on a parent to spawn a child coordinator
     var parentSpawnRoute: AnyRoutable? { get }
+    /// used internally
     var notifyUserInteractiveFinish: Bool { get set }
     
     func show<Route: Routable>(_ route: Route, presentationStyle: NavigationPresentationType)
