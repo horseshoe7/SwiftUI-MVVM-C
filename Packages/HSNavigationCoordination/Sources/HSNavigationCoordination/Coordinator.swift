@@ -5,9 +5,9 @@ import SwiftUI
 
 public enum NavigationPresentationType {
     case push
-    case replaceRoot
     case sheet
     case fullScreenCover
+    case replaceRoot
 }
 
 public enum NavigationBackType {
@@ -17,9 +17,10 @@ public enum NavigationBackType {
     case popStackTo(AnyRoutable)
     /// this will only pop within the context of the current coordinator.  If you provide a value for `last` larger than the items on the localStack, it will take you to the initial screen in THIS coordinator, but no futher.  Otherwise consider `popToStart(finishValue: )`
     case popStack(last: Int)
-    /// Note: This isn't for the child to use to dismiss itself from its parent.  This is how a parent can dismiss its sheet
+    
+    /// Note: This isn't for the child to use to dismiss itself from its parent.  This is how a parent can dismiss its sheet.  If you want to dismiss a child coordinator that's been presented as a sheet, pass a value of `unwindToStart(finishValue:)`
     case dismissSheet
-    /// Note: This isn't for the child to use to dismiss itself from its parent.  This is how a parent can dismiss its fullScreenCover
+    /// Note: This isn't for the child to use to dismiss itself from its parent.  This is how a parent can dismiss its fullscreenCover.  If you want to dismiss a child coordinator that's been presented as a fullscreenCover, pass a value of `unwindToStart(finishValue:)`
     case dismissFullScreenCover
 }
 
@@ -32,14 +33,20 @@ public typealias ViewDefaultFinishBlock = () -> Void
 public protocol CoordinatorProtocol: AnyObject {
     /// required for subsequent retrieval
     var identifier: String { get }
-    /// the route that was pushed on a parent to spawn a child coordinator
+    /// if this coordinator is not a child coordinator, this will be nil. Otherwise, the parent will have to make a view for a route, and if that builder creates a child coordinator, you will provide the route in the "parent's Route type", and the child "branches" from that route.  Said another way, the parent's route that spawns the child coordinator.
     var branchedFrom: AnyRoutable? { get }
+    
+    /// basically to present something.
+    func show<Route: Routable>(_ route: Route, presentationStyle: NavigationPresentationType)
+    /// to go back
+    func goBack(_ type: NavigationBackType)
+    
+}
+
+/// used internally by the module.
+protocol _CoordinatorProtocol: CoordinatorProtocol {
     /// used internally
     var notifyUserInteractiveFinish: Bool { get set }
-    
-    func show<Route: Routable>(_ route: Route, presentationStyle: NavigationPresentationType)
-    func goBack(_ type: NavigationBackType)
-    func reset()
     
     /// this is used as a callback of CoordinatedView so that it can handle any navigations that weren't triggered in code.
     /// The identifier can be used to give context to a view, while troubleshooting.
@@ -58,10 +65,6 @@ public struct AnyCoordinator {
     var identifier: String { _coordinator.identifier }
     
     var branchedFrom: AnyRoutable? { _coordinator.branchedFrom }
-    var notifyUserInteractiveFinish: Bool {
-        get { _coordinator.notifyUserInteractiveFinish }
-        set { _coordinator.notifyUserInteractiveFinish = newValue }
-    }
     
     func show<Route: Routable>(_ route: Route, presentationStyle: NavigationPresentationType = .push) {
         _coordinator.show(route, presentationStyle: presentationStyle)
@@ -71,14 +74,6 @@ public struct AnyCoordinator {
         _coordinator.goBack(type)
     }
     
-    func reset() {
-        _coordinator.reset()
-    }
-    
-    func viewDisappeared(route: AnyRoutable, defaultExit: ViewDefaultFinishBlock?) {
-        _coordinator.viewDisappeared(route: route, defaultExit: defaultExit)
-    }
-    
     func typedByRoute<T: Routable>(as type: T.Type) -> Coordinator<T>? {
         return _coordinator as? Coordinator<T>
     }
@@ -86,6 +81,34 @@ public struct AnyCoordinator {
     func typedCoordinator<T: CoordinatorProtocol>(as type: T.Type) -> T? {
         return _coordinator as? T
     }
+}
+
+extension AnyCoordinator {
+    func viewDisappeared(route: AnyRoutable, defaultExit: ViewDefaultFinishBlock?) {
+        if let coordinator = _coordinator as? _CoordinatorProtocol {
+            coordinator.viewDisappeared(route: route, defaultExit: defaultExit)
+        } else {
+            fatalError("this doesn't work")
+        }
+    }
+    
+    var notifyUserInteractiveFinish: Bool {
+        get {
+            if let coordinator = _coordinator as? _CoordinatorProtocol {
+                return coordinator.notifyUserInteractiveFinish
+            }
+            return false
+        }
+        set {
+            if let coordinator = _coordinator as? _CoordinatorProtocol {
+                coordinator.notifyUserInteractiveFinish = newValue
+            } else {
+                print("Cannot set notifyUserInteractiveFinish")
+            }
+            
+        }
+    }
+    
 }
 
 // MARK: - Coordinator
@@ -576,3 +599,5 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         return returnValue
     }
 }
+
+extension Coordinator: _CoordinatorProtocol {}
