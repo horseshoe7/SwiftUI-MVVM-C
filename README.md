@@ -75,7 +75,7 @@ It is perhaps a bit to unpack at the beginning, but this is the first solution t
  
 - Discussion: There are still some brittle aspects to this:
         
-    - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but to ideally provide the defaultExit to that modifier in a makeView method?
+    - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but to ideally provide the defaultExit to that modifier in a makeView method?  (use ViewPreferencesKeys?  Pass it back up to the parent?)
     
     - currently the finish handler doesn't fire when a sheet is dismissed by the user (via a swipe down)
 

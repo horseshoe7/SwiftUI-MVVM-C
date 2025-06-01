@@ -33,7 +33,7 @@ public protocol CoordinatorProtocol: AnyObject {
     /// required for subsequent retrieval
     var identifier: String { get }
     /// the route that was pushed on a parent to spawn a child coordinator
-    var parentSpawnRoute: AnyRoutable? { get }
+    var branchedFrom: AnyRoutable? { get }
     /// used internally
     var notifyUserInteractiveFinish: Bool { get set }
     
@@ -57,7 +57,7 @@ public struct AnyCoordinator {
     
     var identifier: String { _coordinator.identifier }
     
-    var parentSpawnRoute: AnyRoutable? { _coordinator.parentSpawnRoute }
+    var branchedFrom: AnyRoutable? { _coordinator.branchedFrom }
     var notifyUserInteractiveFinish: Bool {
         get { _coordinator.notifyUserInteractiveFinish }
         set { _coordinator.notifyUserInteractiveFinish = newValue }
@@ -130,8 +130,8 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     public var localStack: [Route] {
         
         // in the even this is a child on the same NavigationStack as its parent.
-        if let parentSpawnRoute {
-            if !sharedPath.routes.contains(where: { $0 == parentSpawnRoute }) {
+        if let branchedFrom {
+            if !sharedPath.routes.contains(where: { $0 == branchedFrom }) {
                 if notifyUserInteractiveFinish { return [] } // because the sheet is nil
                 return [self.initialRoute]
             }
@@ -155,7 +155,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
                 print("[\(String(describing: Route.self))] Sheet was set to something")
             } else {
                 print("[\(String(describing: Route.self))] Sheet was set to nil")
-                if let oldValue, var child = self.findChild(spawnedFrom: AnyRoutable(oldValue)) {
+                if let oldValue, var child = self.findChild(branchedFrom: AnyRoutable(oldValue)) {
                     print("[\(String(describing: Route.self))] Found Child.")
                     //child.goBack(.unwindToStart(finishValue: nil))
                     child.notifyUserInteractiveFinish = true
@@ -200,7 +200,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     private var modalFinishRoute: AnyRoutable?
     
     /// The route of the parent that spawned this Coordinator.  It will be nil if there is no parent, otherwise this should be defined.
-    public private(set) var parentSpawnRoute: AnyRoutable?
+    public private(set) var branchedFrom: AnyRoutable?
     private var isChild: Bool = false
     /// the intended way this coordinator is in use.
     private let presentationStyle: NavigationPresentationType
@@ -248,7 +248,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     /// To create a standard Coordinator that manages the given `ChildRoute`.  If you need to create custom subclasses, see `buildChildCoordinator(...)`
     /// - Parameters:
     ///   - identifier: A unique identifier to provide this coordinator so it can be retrieved properly
-    ///   - parentSpawnRoute: An Optional value that you have to provide if this child coordinator is to be used in a ChildCoordinationStack
+    ///   - branchedFrom: An Optional value that you have to provide if this child coordinator is to be used in a ChildCoordinationStack
     ///   - initialRoute: The initial route that will be used to render content
     ///   - navigationForwardType: how this coordinator is intended to be presented.
     ///   - defaultFinishValue: if the coordinator finishes due to user interaction and not programmatically, you can provide a default finish value if required.
@@ -256,7 +256,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     /// - Returns: An instance of a Coordinator with the provided ChildRoute, with isChild set to true.
     public func createChildCoordinator<ChildRoute: Routable>(
         identifier: String,
-        parentSpawnRoute: AnyRoutable,
+        branchedFrom: AnyRoutable,
         initialRoute: ChildRoute,
         presentationStyle: NavigationPresentationType,
         defaultFinishValue: Any? = nil,
@@ -265,7 +265,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         
         return self.buildChildCoordinator(
             identifier: identifier,
-            parentSpawnRoute: parentSpawnRoute,
+            branchedFrom: branchedFrom,
             initialRoute: initialRoute,
             presentationStyle: presentationStyle,
             defaultFinishValue: defaultFinishValue
@@ -302,7 +302,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
     /// if you build your own, be sure it removes the child from the parent.  See `createChildCoordinator(...)`'s onFinish implementation for an example.
     public func buildChildCoordinator<ChildRoute: Routable, CoordinatorType: Coordinator<ChildRoute>>(
         identifier: String,
-        parentSpawnRoute: AnyRoutable,
+        branchedFrom: AnyRoutable,
         initialRoute: ChildRoute,
         presentationStyle: NavigationPresentationType,
         defaultFinishValue: Any? = nil,
@@ -322,7 +322,7 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         
         
         let childCoordinator = builder(self, sharedPath)
-        childCoordinator.parentSpawnRoute = parentSpawnRoute
+        childCoordinator.branchedFrom = branchedFrom
         childCoordinator.userData[childCoordinator.defaultFinishValueKey] = defaultFinishValue
         childCoordinator.isChild = true
         
@@ -336,13 +336,13 @@ public class Coordinator<Route: Routable>: CoordinatorProtocol {
         childCoordinators[child.identifier] = nil
     }
     
-    func findChild(spawnedFrom parentRoute: AnyRoutable?) -> AnyCoordinator? {
+    func findChild(branchedFrom parentRoute: AnyRoutable?) -> AnyCoordinator? {
         
         guard let parentRoute else { return nil }
         
         print("[\(String(describing: Route.self))] Looking for child spawned with \(parentRoute.identifier)")
         for (_, coordinator) in self.childCoordinators {
-            if coordinator.parentSpawnRoute == parentRoute {
+            if coordinator.branchedFrom == parentRoute {
                 return coordinator
             }
         }

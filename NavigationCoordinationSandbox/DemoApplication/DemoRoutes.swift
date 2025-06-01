@@ -51,7 +51,7 @@ enum MainRoute: Routable {
             
             let child = coordinator.createChildCoordinator(
                 identifier: "UserDetailsFlow",
-                parentSpawnRoute: AnyRoutable(self),
+                branchedFrom: AnyRoutable(self),
                 initialRoute: UserDetailsRoute.userDetail(userId),
                 presentationStyle: presentationStyle,
                 defaultFinishValue: UserDetailResult(selectedAction: "Cancelled", userId: userId),
@@ -110,7 +110,7 @@ enum MainRoute: Routable {
             
             let child = coordinator.createChildCoordinator(
                 identifier: "AuthFlow",
-                parentSpawnRoute: AnyRoutable(self),
+                branchedFrom: AnyRoutable(self),
                 initialRoute: AuthRoutes.login,
                 presentationStyle: presentationStyle,
                 defaultFinishValue: UserAuthResult(isAuthenticated: false, userId: "---"),
