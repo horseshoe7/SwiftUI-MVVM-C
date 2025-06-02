@@ -17,13 +17,18 @@ public protocol Routable: Hashable, Identifiable {
 }
 
 public extension Routable {
-    /// This was designed on the assumption you're using enums as  your Routable type.
+    /// This was designed on the assumption you're using enums as  your Routable type.  It's the case without the Type.
     var identifier: String {
-        return id
+        return "\(routeType).\(routeCase)"
     }
     
-    var id: String {
-        return "\(String(describing: type(of: self))).\(String(describing: self))"
+    /// assuming Routables are enums, this would be the name of the enum
+    var routeType: String {
+        return "\(String(describing: type(of: self)))"
+    }
+    
+    var routeCase: String {
+        return "\(String(describing: self))"
     }
 }
 
@@ -31,11 +36,9 @@ public extension Routable {
 public struct AnyRoutable: Hashable {
 
     fileprivate let _routable: any Routable
-    public let identifier: String
     
     public init<T: Routable>(_ routable: T) {
         self._routable = routable
-        self.identifier = routable.identifier
     }
     
     public func typedByRoute<T: Routable>(as type: T.Type) -> T? {
@@ -48,5 +51,18 @@ public struct AnyRoutable: Hashable {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(identifier)
+    }
+    
+    var identifier: String {
+        return _routable.identifier
+    }
+    
+    /// assuming Routables are enums, this would be the name of the enum
+    var routeType: String {
+        return _routable.routeType
+    }
+    
+    var routeCase: String {
+        return _routable.routeCase
     }
 }

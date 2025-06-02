@@ -103,6 +103,7 @@ final class CoordinatorTests: XCTestCase {
         // Then: Initial route should be updated but path behavior needs implementation
         XCTAssertEqual(rootCoordinator.initialRoute, TestRoute.detail(id: 999))
         // Note: Path clearing behavior depends on implementation of removeAll()
+        XCTAssertEqual(rootCoordinator.path.count, 0)
     }
     
     // MARK: - Sheet Presentation Tests (Root Coordinator)

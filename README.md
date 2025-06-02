@@ -87,3 +87,22 @@ Thank you to Tiago Henriques and his [blog post on the topic ](https://www.tiago
 ## LICENSE
 
 MIT.  Or Beerware if you prefer.  Yes, buy me a beer and don't send any lawyers after me.
+
+
+### New Draft
+
+# Concepts
+
+How to pass data around.
+
+The idea is that a View is created and managed by a coordinator.  A View should only talk to its coordinator.  A Coordinator creates and configures a view.  
+
+If a view is finished, it notifies its coordinator.  The coordinator is responsible for knowing what to do after that (for example, as a child, pushing a new view, or the coordinator itself can 'finish').
+
+a 'defaultExit' is a callback that you can provide for situations where you otherwise cannot control navigation programmatically, such as when a user taps a back button, swipes to go back, or swipes a sheet down to dismiss it.  In this case, you have the opportunity to provide a callback in this scenario.
+
+A Coordinator manages Routables of the same type.  A Child Coordinator can be created to manage routes of a different type, and compose how they relate to their parent. 
+
+Whenever you create a Child coordinator, it needs a reference to a "proxy route" defined in the parent's Routables.  So that when you push the proxy route, you can use that to build a child coordinator.
+
+
