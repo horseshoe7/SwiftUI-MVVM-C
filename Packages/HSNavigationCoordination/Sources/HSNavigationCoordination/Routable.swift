@@ -17,6 +17,8 @@ public protocol Routable: Hashable, Identifiable {
 }
 
 public extension Routable {
+    var id: String { identifier }
+    
     /// This was designed on the assumption you're using enums as  your Routable type.  It's the case without the Type.
     var identifier: String {
         return "\(routeType).\(routeCase)"

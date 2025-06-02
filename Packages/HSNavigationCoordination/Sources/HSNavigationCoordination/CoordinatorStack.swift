@@ -24,7 +24,7 @@ public struct CoordinatorStack<Route: Routable>: View {
                 route.makeView(with: coordinator, presentationStyle: .sheet)
             }
             .fullScreenCover(item: $coordinator.fullscreenCover) { route in
-                route.makeView(with: coordinator, presentationStyle: .fullScreenCover)
+                route.makeView(with: coordinator, presentationStyle: .fullscreenCover)
             }
         }
     }
@@ -50,7 +50,7 @@ public struct ChildCoordinatorStack<Route: Routable>: View {
                 route.makeView(with: coordinator, presentationStyle: .sheet)
             }
             .fullScreenCover(item: $coordinator.fullscreenCover) { route in
-                route.makeView(with: coordinator, presentationStyle: .fullScreenCover)
+                route.makeView(with: coordinator, presentationStyle: .fullscreenCover)
             }
     }
 }

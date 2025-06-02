@@ -42,6 +42,7 @@ public class _CoordinatorNode {
     }
     
     var isRoot: Bool { parentNode == nil }
+    var isChild: Bool { parentNode != nil }
     var isLeaf: Bool { childNodes.isEmpty }
     
     func ancestorCount() -> Int {
@@ -77,7 +78,7 @@ public class _CoordinatorNode {
 
 
 @Observable
-public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol {
+public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol {
     
     /// If this were a UINavigationController, this would be your first view controller in the stack.
     public private(set) var initialRoute: Route
@@ -149,12 +150,12 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
             print("[\(String(describing: Route.self))] Presenting Sheet: \(typedRoute)")
             sheet = typedRoute // sets a private var here too.
             
-        case .fullScreenCover:
+        case .fullscreenCover:
             guard let typedRoute = route as? Route else {
-                fatalError("Warning: Cannot present fullScreenCover with cross-type route from typed coordinator")
+                fatalError("Warning: Cannot present fullscreenCover with cross-type route from typed coordinator")
             }
             print("[\(String(describing: Route.self))] Presenting FullScreenCover: \(typedRoute)")
-            fullScreenCover = typedRoute // sets a private var here too.
+            fullscreenCover = typedRoute // sets a private var here too.
         }
     }
     
@@ -193,11 +194,11 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
             _presentedSheet = nil // this is to indicate it wasn't userInitiated.
             
         case .dismissFullScreenCover:
-            if fullScreenCover == nil {
+            if fullscreenCover == nil {
                 print("[\(String(describing: Route.self))] Warning: You're trying to dismiss a fullscreenCover that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
             }
             
-            fullScreenCover = nil
+            fullscreenCover = nil
             _presentedFullScreenCover = nil
         }
     }
@@ -260,12 +261,12 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
     /// And we compare here to determine in another method if that happened.
     private var _presentedFullScreenCover: Route?
     /// SwiftUI can set this to nil via a binding... (see `_presentedFullScreenCover`)
-    public internal(set) var fullScreenCover: Route? {
+    public internal(set) var fullscreenCover: Route? {
         didSet {
-            if let fullScreenCover {
-                _presentedFullScreenCover = fullScreenCover
+            if let fullscreenCover {
+                _presentedFullScreenCover = fullscreenCover
             } else {
-                checkForUserInitiatedFinishesInChildren(presentationStyle: .fullScreenCover) // you check for a child with a branchedBy with _presentedFullScreenCover
+                checkForUserInitiatedFinishesInChildren(presentationStyle: .fullscreenCover) // you check for a child with a branchedBy with _presentedFullScreenCover
             }
             // we don't set it to nil, because we look for a mismatch in another method.
         }
@@ -309,11 +310,12 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
         presentationStyle: NavigationPresentationType,
         onFinish: CoordinatorFinishBlock? = nil
     ) {
-        super.init(identifier: identifier)
+        
         self.sharedPath = sharedPath
         self.onFinish = onFinish
         self.initialRoute = initialRoute
         self.presentationStyle = presentationStyle
+        super.init(identifier: identifier)
     }
     
     // MARK: - Child Coordinator Management
@@ -334,7 +336,7 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
         presentationStyle: NavigationPresentationType,
         defaultFinishValue: Any? = nil,
         onFinish: @escaping (_ userInitiated: Bool, _ result: Any?) -> Void
-    ) -> NewCoordinator<ChildRoute> {
+    ) -> Coordinator<ChildRoute> {
         
         return self.buildChildCoordinator(
             identifier: identifier,
@@ -344,7 +346,7 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
             defaultFinishValue: defaultFinishValue
         ) { parent, sharedNavigationPath in
                 
-                return NewCoordinator<ChildRoute>(
+                return Coordinator<ChildRoute>(
                     identifier: identifier,
                     initialRoute: initialRoute,
                     sharedPath: presentationStyle == .push ? sharedPath : .init(NavigationPath()),
@@ -361,13 +363,13 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
     
     /// see the implementation for `createChildCoordinator(...)` to see how you could build your own Coordinator.
     /// if you build your own, be sure it removes the child from the parent.  See `createChildCoordinator(...)`'s onFinish implementation for an example.
-    public func buildChildCoordinator<ChildRoute: Routable, CoordinatorType: NewCoordinator<ChildRoute>>(
+    public func buildChildCoordinator<ChildRoute: Routable, CoordinatorType: Coordinator<ChildRoute>>(
         identifier: String,
         branchedFrom: AnyRoutable,
         initialRoute: ChildRoute,
         presentationStyle: NavigationPresentationType,
         defaultFinishValue: Any? = nil,
-        builder: (NewCoordinator<Route>, SharedNavigationPath) -> CoordinatorType
+        builder: (Coordinator<Route>, SharedNavigationPath) -> CoordinatorType
     ) -> CoordinatorType {
         
         if let existingAny = childCoordinators[identifier] {
@@ -402,7 +404,8 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
     private func finishThis(with result: Any? = nil, userInitiated: Bool = false) {
         
         guard !wasOnceFinished else {
-            print("Warning: Attempting to finish a coordinator that was already finished.")
+            print("Warning: Attempting to finish a coordinator that was already finished.  Doing nothing.")
+            return
         }
         wasOnceFinished = true
         self.onFinish?(userInitiated, result ?? defaultFinishValue, AnyCoordinator(self))
@@ -432,7 +435,7 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
             return
         }
         
-        // find the child whose branchedBy is sheet, fullScreenCover or route in sharedPath, so to determine what kind of unwind you have to do.
+        // find the child whose branchedBy is sheet, fullscreenCover or route in sharedPath, so to determine what kind of unwind you have to do.
         guard let branchedFrom = childCoordinator.branchedFrom else {
             fatalError("Impossible state.  A child should always have a branchedFrom")
         }
@@ -444,7 +447,7 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
             return
         }
         
-        if let fullScreenCover, AnyRoutable(fullScreenCover) == branchedFrom {
+        if let fullscreenCover, AnyRoutable(fullscreenCover) == branchedFrom {
             // then we need to programmatically dismiss the sheet and finish.
             self.goBack(.dismissFullScreenCover)
             childCoordinator.finish(with: result)
@@ -505,9 +508,9 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
                 }
             }
             
-        case .fullScreenCover:
+        case .fullscreenCover:
             // you check for a child with a branchedBy with _presentedFullscreenCover
-            if let _presentedFullScreenCover, fullScreenCover == nil {
+            if let _presentedFullScreenCover, fullscreenCover == nil {
                 // SwiftUI dismissed the sheet via a binding.
                 
                 // you check for a child with a branchedBy with _presentedSheet
@@ -519,9 +522,81 @@ public class NewCoordinator<Route: Routable>: _CoordinatorNode, CoordinatorProto
             }
             
         case .replaceRoot:
-            
+            fatalError("Implement me!")
         }
     }
     
-    
+    func viewDisappeared(route: AnyRoutable, defaultExit: ViewDefaultFinishBlock?) {
+
+        /* the purpose of this method is to determine if you should invoke the default exit and/or tell the parent to finish this child.
+         
+         So, viewDisappeared can be tricky, because it's literally when it disappears.
+         Situations where a given view disappears:
+         - A) A new view is pushed onto the stack (over top of it)
+         - B) the view itself is popped from the stack
+         - C) the stack is popped to root, and the view was in the collection of views that were popped.
+         - D) a new view is presented over top
+         - E) the view itself was the presented view.
+         
+         */
+        
+        print("[\(String(describing: Route.self))] View with Route `\(route.identifier)` disappeared. Programmatically: \(wasProgrammaticallyPopped)")
+        
+        // it means a SwiftUI binding set sheet to nil (i.e. via user interaction)
+        if let _presentedSheet, sheet == nil {
+            self._presentedSheet = nil
+            print("defaultExit will be called in response to sheet dismissal.")
+            defaultExit?()
+            return
+        }
+        
+        // it means a SwiftUI binding set fullscreenCover to nil. (i.e. via user interaction)
+        if let _presentedFullScreenCover, fullscreenCover == nil {
+            self._presentedFullScreenCover = nil
+            print("defaultExit will be called in response to sheet dismissal.")
+            defaultExit?()
+            return
+        }
+        
+        guard !wasProgrammaticallyPopped else {
+            // nothing to do because we programmatically changed things, thus exits were properly invoked.
+            wasProgrammaticallyPopped = false
+            return
+        }
+        
+        if let typedRoute = route.typedByRoute(as: Route.self) {
+            
+            if self.shouldNotifyUserInteractiveFinish {
+                
+                defaultExit?()
+                self.parentNode?.finish(self, result: defaultFinishValue, userInitiated: true)
+                return
+            }
+            
+            let isInNavPath = (
+                sharedPath.routes.contains(where: { $0.identifier == typedRoute.identifier }) ||
+                localStack.contains(where: { $0 == typedRoute })
+            )
+            
+            if isInNavPath {
+                print("Disappeared due to something being pushed on top of it.")
+            } else {
+                if typedRoute != self.initialRoute {
+                    print("[\(String(describing: Route.self)).\(String(describing: typedRoute))] Route was popped by back/swipe")
+                    print("defaultExit will be called.")
+                    defaultExit?()
+                } else if typedRoute == self.initialRoute && self.isChild {
+                    // this means the view disappeared is the first in the stack, thus the stack was automatically popped.
+                    print("defaultExit will be called then the onFinish method will likely be called.")
+                    defaultExit?()
+                    
+                    //self.finish(with: defaultFinishValue, userInitiated: true)
+                }
+            }
+        }
+        
+        wasProgrammaticallyPopped = false
+    }
 }
+
+extension Coordinator: _CoordinatorProtocol {}
