@@ -93,7 +93,7 @@ enum MainRoute: Routable {
                 viewModel: .init(
                     exits: .init(
                         onTappedAuthorize: {
-                            coordinator.show(MainRoute.authFlow, presentationStyle: .fullScreenCover)
+                            coordinator.show(MainRoute.authFlow, presentationStyle: .fullscreenCover)
                         }
                     )
                 )

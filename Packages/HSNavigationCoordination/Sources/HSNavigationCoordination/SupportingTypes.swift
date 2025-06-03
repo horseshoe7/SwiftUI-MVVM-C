@@ -53,7 +53,7 @@ protocol _CoordinatorProtocol: CoordinatorProtocol {
     func notifyUserInteractiveFinish()
     
     /// if you need to finish it programmatically.
-    func finish(with result: Any?)
+    func finish(with result: Any?, userInitiated: Bool)
     
     /// this is used as a callback of CoordinatedView so that it can handle any navigations that weren't triggered in code.
     /// The identifier can be used to give context to a view, while troubleshooting.
@@ -106,9 +106,9 @@ extension AnyCoordinator {
         }
     }
     
-    func finish(with result: Any?) {
+    func finish(with result: Any?, userInitiated: Bool = false) {
         if let coordinator = _coordinator as? _CoordinatorProtocol {
-            coordinator.finish(with: result)
+            coordinator.finish(with: result, userInitiated: userInitiated)
         }
     }
 

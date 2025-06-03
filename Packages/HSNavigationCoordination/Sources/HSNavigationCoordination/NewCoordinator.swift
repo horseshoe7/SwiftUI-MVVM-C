@@ -1,81 +1,6 @@
 import Foundation
 import SwiftUI
 
-public class _CoordinatorNode {
-    
-    public static let defaultFinishValueKey = "CoordinatorDefaultFinishValueKey"
-    
-    /// A Value you provide that uniquely identifies this coordinator.
-    public let identifier: String
-    
-    init(identifier: String) {
-        self.identifier = identifier
-    }
-    
-    weak var parentNode: _CoordinatorNode?
-    var childNodes: [String: _CoordinatorNode] = [:]
-    
-    // Tree structure operations
-    func addChild(_ child: _CoordinatorNode) {
-        child.parentNode = self
-        guard childNodes[child.identifier] == nil else {
-            print("Warning; tried to add a node with identifier that already exists as a child.  Ignoring this.")
-            return
-        }
-        childNodes[child.identifier] = child
-    }
-    
-    func removeFromParent() {
-        parentNode?.removeChild(withIdentifier: self.identifier)
-    }
-    
-    func removeChild(withIdentifier identifier: String) {
-        if let existing = childNodes[identifier] {
-            existing.parentNode = nil
-            childNodes[identifier] = nil
-        }
-    }
-    
-    // Tree queries that don't care about data type
-    var depth: Int {
-        return (parentNode?.depth ?? -1) + 1
-    }
-    
-    var isRoot: Bool { parentNode == nil }
-    var isChild: Bool { parentNode != nil }
-    var isLeaf: Bool { childNodes.isEmpty }
-    
-    func ancestorCount() -> Int {
-        return parentNode?.ancestorCount() ?? 0 + 1
-    }
-    
-    func findRoot() -> _CoordinatorNode {
-        return parentNode?.findRoot() ?? self
-    }
-    
-    // Tree traversal
-    func preOrderTraversal(_ visit: (_CoordinatorNode) -> Void) {
-        visit(self)
-        childNodes.forEach { (identifier: String, node: _CoordinatorNode) in
-            node.preOrderTraversal(visit)
-        }
-    }
-    
-    func postOrderTraversal(_ visit: (_CoordinatorNode) -> Void) {
-        childNodes.forEach { (identifier: String, node: _CoordinatorNode) in
-            node.postOrderTraversal(visit)
-        }
-        visit(self)
-    }
-    
-    // MARK: - Abstract Methods
-    
-    func finish(_ child: _CoordinatorNode, result: Any? = nil, userInitiated: Bool = false) {
-        
-        fatalError("You need to override this in your subclass.")
-    }
-}
-
 
 @Observable
 public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol {
@@ -112,10 +37,6 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         super.removeChild(withIdentifier: child.identifier)
     }
     
-//    override func removeFromParent() {
-//        parentNode?.removeChild(withIdentifier: self.identifier)
-//    }
-    
     // MARK: - Navigation Methods
     
     public func push<T: Routable>(_ route: T) {
@@ -149,6 +70,7 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
             }
             print("[\(String(describing: Route.self))] Presenting Sheet: \(typedRoute)")
             sheet = typedRoute // sets a private var here too.
+            _presentedSheet = typedRoute
             
         case .fullscreenCover:
             guard let typedRoute = route as? Route else {
@@ -156,6 +78,7 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
             }
             print("[\(String(describing: Route.self))] Presenting FullScreenCover: \(typedRoute)")
             fullscreenCover = typedRoute // sets a private var here too.
+            _presentedFullScreenCover = typedRoute
         }
     }
     
@@ -177,14 +100,21 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
                 print("WARNING: The requested route was not in the stack.  Doing nothing.")
                 return
             }
-            let numToRemove = localStack.count - 1 - lastIndex
+            let numToRemove = max(0, localStack.count - lastIndex)
             wasProgrammaticallyPopped = true // sets a flag for viewDisappeared.
-            path.removeLast(numToRemove)
+            path.removeLast(min(numToRemove, path.count))
             
             
         case .unwindToStart(let finishValue):
-            // here you should notify the parent to unwind the child.
-            self.parentNode?.finish(self, result: finishValue ?? defaultFinishValue, userInitiated: false)
+            if let parentNode {
+                parentNode.finish(self, result: finishValue ?? defaultFinishValue, userInitiated: false)
+            } else {
+                // essentially resets it.
+                wasProgrammaticallyPopped = true
+                path.removeLast(path.count)
+                sheet = nil
+                fullscreenCover = nil
+            }
             
         case .dismissSheet:
             if sheet == nil {
@@ -212,7 +142,9 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         get { sharedPath.path }
         set {
             sharedPath.path = newValue
-            checkForUserInitiatedFinishesInChildren(presentationStyle: .push)
+            if !wasProgrammaticallyPopped {
+                checkForUserInitiatedFinishesInChildren(presentationStyle: .push)
+            }
         }
     }
     
@@ -247,9 +179,7 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
     /// SwiftUI can set this to nil via a binding... (see `_presentedSheet`)
     public internal(set) var sheet: Route? {
         didSet {
-            if let sheet {
-                _presentedSheet = sheet
-            } else {
+            if self.sheet == nil {
                 checkForUserInitiatedFinishesInChildren(presentationStyle: .sheet)
             }
         }
@@ -263,12 +193,9 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
     /// SwiftUI can set this to nil via a binding... (see `_presentedFullScreenCover`)
     public internal(set) var fullscreenCover: Route? {
         didSet {
-            if let fullscreenCover {
-                _presentedFullScreenCover = fullscreenCover
-            } else {
+            if self.fullscreenCover == nil {
                 checkForUserInitiatedFinishesInChildren(presentationStyle: .fullscreenCover) // you check for a child with a branchedBy with _presentedFullScreenCover
             }
-            // we don't set it to nil, because we look for a mismatch in another method.
         }
     }
     
@@ -353,9 +280,9 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
                     presentationStyle: presentationStyle,
                     onFinish: { [weak parent] userInitiated, anyResult, thisCoordinator in
                         
-                        onFinish(userInitiated, anyResult)
                         // Remove the child coordinator when it finishes
                         parent?.removeChildCoordinator(thisCoordinator)
+                        onFinish(userInitiated, anyResult)
                     }
                 )
             }
@@ -403,6 +330,8 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
     /// should be invoked by a parent, ideally, or indirectly via shouldNotifyUserInteractiveFinish
     private func finishThis(with result: Any? = nil, userInitiated: Bool = false) {
         
+        print("[\(String(describing: Route.self))] - \(self.identifier) - onFinish \(userInitiated ? "(user initated)" : "")")
+        
         guard !wasOnceFinished else {
             print("Warning: Attempting to finish a coordinator that was already finished.  Doing nothing.")
             return
@@ -411,8 +340,8 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         self.onFinish?(userInitiated, result ?? defaultFinishValue, AnyCoordinator(self))
     }
     
-    func finish(with result: Any?) {
-        finishThis(with: result, userInitiated: false)
+    func finish(with result: Any?, userInitiated: Bool) {
+        finishThis(with: result, userInitiated: userInitiated)
     }
     
     override func finish(_ child: _CoordinatorNode, result: Any? = nil, userInitiated: Bool = false) {
@@ -423,15 +352,11 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         }
         
         if userInitiated {
-            guard result == nil else {
-                fatalError("Misuse.  A user initiated finish should only be able to use its defaultReturnValue")
-                return
-            }
             // if it's user initiated, you just need to call the completion block.
             // but this has to happen AFTER the viewsDisappeared?  Yes.  So state is set consistently.
             // there will be the case where it might replace 'later'.
             // in that case you'll have to replace before presenting, then depending on your result, replace again to the appropriate screen, for example.
-            childCoordinator.notifyUserInteractiveFinish()
+            childCoordinator.finish(with: result, userInitiated: true)
             return
         }
         
@@ -471,7 +396,7 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         case .push:
             // you check for children with a parent route of the same type as this one, presentation type being .push, and the shared stack's last route being of this coordinator's type (i.e. child routes not on stack).
             
-            for (identifier, childNode) in childNodes {
+            for (identifier, _) in childNodes {
                 
                 guard let childCoordinator = self.childCoordinators[identifier] else {
                     fatalError("Inconsistency.  There should always be a child coordinator for any childNode")
@@ -502,8 +427,11 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
                 
                 // you check for a child with a branchedBy with _presentedSheet
                 self.childCoordinators.forEach { identifier, anyChild in
-                    if let branchedFrom = anyChild.branchedFrom, branchedFrom == AnyRoutable(_presentedSheet) {
-                        anyChild.notifyUserInteractiveFinish()
+                    if anyChild.presentationStyle == .sheet {
+                        if let branchedFrom = anyChild.branchedFrom, branchedFrom == AnyRoutable(_presentedSheet) {
+                            self._presentedSheet = nil // because we've now just handled it.
+                            anyChild.notifyUserInteractiveFinish()
+                        }
                     }
                 }
             }
@@ -515,8 +443,11 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
                 
                 // you check for a child with a branchedBy with _presentedSheet
                 self.childCoordinators.forEach { identifier, anyChild in
-                    if let branchedFrom = anyChild.branchedFrom, branchedFrom == AnyRoutable(_presentedFullScreenCover) {
-                        anyChild.notifyUserInteractiveFinish()
+                    if anyChild.presentationStyle == .fullscreenCover {
+                        if let branchedFrom = anyChild.branchedFrom, branchedFrom == AnyRoutable(_presentedFullScreenCover) {
+                            self._presentedFullScreenCover = nil // it fulfilled its purpose.
+                            anyChild.notifyUserInteractiveFinish()
+                        }
                     }
                 }
             }
@@ -543,16 +474,18 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         print("[\(String(describing: Route.self))] View with Route `\(route.identifier)` disappeared. Programmatically: \(wasProgrammaticallyPopped)")
         
         // it means a SwiftUI binding set sheet to nil (i.e. via user interaction)
-        if let _presentedSheet, sheet == nil {
-            self._presentedSheet = nil
+        // AND don't confuse this being nil with the child-parent relationship.
+        // viewDisappeared methods are mostly in the child coordinator whereas sheet is presenting the child.
+        if _presentedSheet != nil, sheet == nil {
+            _presentedSheet = nil
             print("defaultExit will be called in response to sheet dismissal.")
             defaultExit?()
             return
         }
         
         // it means a SwiftUI binding set fullscreenCover to nil. (i.e. via user interaction)
-        if let _presentedFullScreenCover, fullscreenCover == nil {
-            self._presentedFullScreenCover = nil
+        if _presentedFullScreenCover != nil, fullscreenCover == nil {
+            _presentedFullScreenCover = nil
             print("defaultExit will be called in response to sheet dismissal.")
             defaultExit?()
             return
@@ -567,7 +500,7 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         if let typedRoute = route.typedByRoute(as: Route.self) {
             
             if self.shouldNotifyUserInteractiveFinish {
-                
+                self.shouldNotifyUserInteractiveFinish = false
                 defaultExit?()
                 self.parentNode?.finish(self, result: defaultFinishValue, userInitiated: true)
                 return
@@ -600,3 +533,81 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
 }
 
 extension Coordinator: _CoordinatorProtocol {}
+
+// MARK: - CoordinatorNode baseclass
+
+/// This is used to establish a type agnostic tree node structure so that a child can retain a weak reference to its parent
+public class _CoordinatorNode {
+    
+    public static let defaultFinishValueKey = "CoordinatorDefaultFinishValueKey"
+    
+    /// A Value you provide that uniquely identifies this coordinator.
+    public let identifier: String
+    
+    init(identifier: String) {
+        self.identifier = identifier
+    }
+    
+    weak var parentNode: _CoordinatorNode?
+    var childNodes: [String: _CoordinatorNode] = [:]
+    
+    // Tree structure operations
+    func addChild(_ child: _CoordinatorNode) {
+        child.parentNode = self
+        guard childNodes[child.identifier] == nil else {
+            print("Warning; tried to add a node with identifier that already exists as a child.  Ignoring this.")
+            return
+        }
+        childNodes[child.identifier] = child
+    }
+    
+    func removeFromParent() {
+        parentNode?.removeChild(withIdentifier: self.identifier)
+    }
+    
+    func removeChild(withIdentifier identifier: String) {
+        if let existing = childNodes[identifier] {
+            existing.parentNode = nil
+            childNodes[identifier] = nil
+        }
+    }
+    
+    // Tree queries that don't care about data type
+    var depth: Int {
+        return (parentNode?.depth ?? -1) + 1
+    }
+    
+    var isRoot: Bool { parentNode == nil }
+    var isChild: Bool { parentNode != nil }
+    var isLeaf: Bool { childNodes.isEmpty }
+    
+    func ancestorCount() -> Int {
+        return parentNode?.ancestorCount() ?? 0 + 1
+    }
+    
+    func findRoot() -> _CoordinatorNode {
+        return parentNode?.findRoot() ?? self
+    }
+    
+    // Tree traversal
+    func preOrderTraversal(_ visit: (_CoordinatorNode) -> Void) {
+        visit(self)
+        childNodes.forEach { (identifier: String, node: _CoordinatorNode) in
+            node.preOrderTraversal(visit)
+        }
+    }
+    
+    func postOrderTraversal(_ visit: (_CoordinatorNode) -> Void) {
+        childNodes.forEach { (identifier: String, node: _CoordinatorNode) in
+            node.postOrderTraversal(visit)
+        }
+        visit(self)
+    }
+    
+    // MARK: - Abstract Methods
+    
+    func finish(_ child: _CoordinatorNode, result: Any? = nil, userInitiated: Bool = false) {
+        
+        fatalError("You need to override this in your subclass.")
+    }
+}
