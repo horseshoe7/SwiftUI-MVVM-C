@@ -117,7 +117,7 @@ extension AnyCoordinator {
 // MARK: - Coordinator
 
 /// A type that manages both the type erased NavigationPath (yet does have type when used with .navigationDestination)
-/// and tracks a list of `AnyRoutable` that is used by the `Coordinator`.
+/// and tracks a list of `AnyRoutable` that is used by the `Coordinator`.  It can be that you have a CoordinatorStack and a ChildCoordinatorStack that need to share the same NavigationPath, and you still need some information about the `AnyRoutable` types within it that are otherwise completely opaque in the NavigationPath.
 @Observable
 public class SharedNavigationPath {
     

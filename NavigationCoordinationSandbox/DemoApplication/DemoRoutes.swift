@@ -43,8 +43,6 @@ enum MainRoute: Routable {
             
         case .profile(let userId): // here you want a child coordinator.
             
-            //print("Create Child Coordinator")
-            
             let child = coordinator.createChildCoordinator(
                 identifier: "UserDetailsFlow",
                 branchedFrom: AnyRoutable(self),
@@ -61,6 +59,7 @@ enum MainRoute: Routable {
                 }
             )
             
+            // a "ChildCoordinatorStack" is one that is sharing the same NavigationPath and NavigationStack as its parent.
             ChildCoordinatorStack<UserDetailsRoute>()
                 .environment(child) // uses the initialRoute to create the View.
 
@@ -199,7 +198,8 @@ enum AuthRoutes: Routable {
                     onFinish: { result in
                         coordinator.goBack(.unwindToStart(finishValue: result)) // NOT dismissFullscreenCover!
                     }, showSignUp: {
-                        coordinator.userData["userPrompt"] = "Stephen" // Here we demonstrate how the Coordinator can store data in between screen flows.... (see below)
+                        // Here we demonstrate how the Coordinator can store data in between screen flows.... (see below)
+                        coordinator.userData["userPrompt"] = "Stephen"
                         coordinator.show(AuthRoutes.register)
                     }
                 ),

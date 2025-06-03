@@ -3,9 +3,9 @@ import SwiftUI
 
 // MARK: - Core Protocols
 
+/// The Routable type is meant to be how you define routes managed by any given Coordinator.  It is conceived that you would implement these as enums.  Otherwise the behaviour is undefined.
 public protocol Routable: Hashable, Identifiable {
     associatedtype Content: View
-    
     
     /// A factory method where you create and configure your view/viewModel and exits.
     /// - Parameters:

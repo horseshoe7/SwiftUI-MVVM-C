@@ -2,11 +2,15 @@ import Foundation
 import SwiftUI
 
 
+/// A `Coordinator` is a component that manages the the state of a `CoordinatorStack` (or `ChildCoordinatorStack`)
+/// and is conceived for you to implement your navigation logic by implementing `Routable` types and the `Coordinator` delegates
+/// the view creation to your `Routable` type via the `makeView(...)` method.
 @Observable
 public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol {
     
     /// If this were a UINavigationController, this would be your first view controller in the stack.
     public private(set) var initialRoute: Route
+    /// `.initialRoute` and `branchedFrom` are essentially proxies.   `branchedFrom` will always be defined if this coordinator is a child coordinator, created with the `createChildCoordinator(...)` (`or buildChildCoordinator(...)`) methods.  `branchedFrom` is the route in the parent that will have spawned this `Coordinator` type.
     public private(set) var branchedFrom: AnyRoutable?
     
     // MARK: - Generic Data Storage
@@ -25,113 +29,19 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
     // MARK: - Node Tree Management
     private var childCoordinators: [String: AnyCoordinator] = [:]
     
-    // Tree structure operations
-    func addChildCoordinator(_ child: AnyCoordinator, node: _CoordinatorNode) {
+    /// This method establishes a reference to its parent and is used by the `buildChildCoordinator(...)` method.
+    private func addChildCoordinator(_ child: AnyCoordinator, node: _CoordinatorNode) {
         super.addChild(node)
         node.parentNode = self
         childCoordinators[child.identifier] = child
     }
     
-    public func removeChildCoordinator(_ child: AnyCoordinator) {
+    private func removeChildCoordinator(_ child: AnyCoordinator) {
         childCoordinators[child.identifier] = nil
         super.removeChild(withIdentifier: child.identifier)
     }
     
-    // MARK: - Navigation Methods
     
-    public func push<T: Routable>(_ route: T) {
-        self.show(route, presentationStyle: .push)
-    }
-    
-    public func show<T: Routable>(_ route: T, presentationStyle: NavigationPresentationType = .push) {
-        
-        switch presentationStyle {
-        case .push:
-            guard let typedRoute = route as? Route else {
-                fatalError("Misuse!")
-            }
-            print("[\(String(describing: Route.self))] Pushing typed route: \(route)")
-            _lastPushed = typedRoute
-            wasProgrammaticallyPopped = false
-            sharedPath.append(typedRoute)
-            
-        case .replaceRoot:
-            guard let typedRoute = route as? Route else {
-                fatalError("Misuse!  You should not replace routes of different types.")
-            }
-            print("[\(String(describing: Route.self))] Replacing Stack to typed route: \(route)")
-            self.goBack(.popStackTo(AnyRoutable(self.initialRoute)))
-            
-            self.initialRoute = typedRoute
-            
-        case .sheet:
-            guard let typedRoute = route as? Route else {
-                fatalError("Warning: Cannot present sheet with cross-type route from typed coordinator")
-            }
-            print("[\(String(describing: Route.self))] Presenting Sheet: \(typedRoute)")
-            sheet = typedRoute // sets a private var here too.
-            _presentedSheet = typedRoute
-            
-        case .fullscreenCover:
-            guard let typedRoute = route as? Route else {
-                fatalError("Warning: Cannot present fullscreenCover with cross-type route from typed coordinator")
-            }
-            print("[\(String(describing: Route.self))] Presenting FullScreenCover: \(typedRoute)")
-            fullscreenCover = typedRoute // sets a private var here too.
-            _presentedFullScreenCover = typedRoute
-        }
-    }
-    
-    public func goBack(_ type: NavigationBackType = .popStack(last: 1)) {
-        
-        switch type {
-        case .popStack(let count):
-            let actualCount = min(count, localStack.count - 1) // we can only go back to the initial on the stack.
-            if actualCount > 0 {
-                wasProgrammaticallyPopped = true // sets a flag for viewDisappeared
-                path.removeLast(actualCount)
-            }
-            
-        case .popStackTo(let toAnyRoute):
-            guard let typedRoute = toAnyRoute.typedByRoute(as: Route.self) else {
-                fatalError("Misuse.  Read the property description.  You must pass a Route of the same type of this coordinator")
-            }
-            guard let lastIndex = localStack.lastIndex(where: { $0 == typedRoute }) else {
-                print("WARNING: The requested route was not in the stack.  Doing nothing.")
-                return
-            }
-            let numToRemove = max(0, (localStack.count - 1) - lastIndex)
-            wasProgrammaticallyPopped = true // sets a flag for viewDisappeared.
-            path.removeLast(min(numToRemove, path.count))
-            
-            
-        case .unwindToStart(let finishValue):
-            if let parentNode {
-                parentNode.finish(self, result: finishValue ?? defaultFinishValue, userInitiated: false)
-            } else {
-                // essentially resets it.
-                wasProgrammaticallyPopped = true
-                path.removeLast(path.count)
-                sheet = nil
-                fullscreenCover = nil
-            }
-            
-        case .dismissSheet:
-            if sheet == nil {
-                print("[\(String(describing: Route.self))] Warning: You're trying to dismiss a sheet that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
-            }
-            sheet = nil
-            _presentedSheet = nil // this is to indicate it wasn't userInitiated.
-            
-        case .dismissFullScreenCover:
-            if fullscreenCover == nil {
-                print("[\(String(describing: Route.self))] Warning: You're trying to dismiss a fullscreenCover that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
-            }
-            
-            fullscreenCover = nil
-            _presentedFullScreenCover = nil
-        }
-    }
     
     // MARK: - Navigation States
     
@@ -150,8 +60,6 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
     
     // MARK: Navigation Stack
     
-    /// you use this to check your stack.
-    private var _lastPushed: Route?
     /// This is taken to mean pop or replaced.
     private var wasProgrammaticallyPopped = false
     
@@ -319,6 +227,101 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         self.addChildCoordinator(anyChild, node: childCoordinator)
         
         return childCoordinator
+    }
+    
+    // MARK: - Navigation Methods
+    
+    public func push<T: Routable>(_ route: T) {
+        self.show(route, presentationStyle: .push)
+    }
+    
+    public func show<T: Routable>(_ route: T, presentationStyle: NavigationPresentationType = .push) {
+        
+        switch presentationStyle {
+        case .push:
+            guard let typedRoute = route as? Route else {
+                fatalError("Misuse!")
+            }
+            print("[\(String(describing: Route.self))] Pushing typed route: \(route)")
+            wasProgrammaticallyPopped = false
+            sharedPath.append(typedRoute)
+            
+        case .replaceRoot:
+            guard let typedRoute = route as? Route else {
+                fatalError("Misuse!  You should not replace routes of different types.")
+            }
+            print("[\(String(describing: Route.self))] Replacing Stack to typed route: \(route)")
+            self.goBack(.popStackTo(AnyRoutable(self.initialRoute)))
+            
+            self.initialRoute = typedRoute
+            
+        case .sheet:
+            guard let typedRoute = route as? Route else {
+                fatalError("Warning: Cannot present sheet with cross-type route from typed coordinator")
+            }
+            print("[\(String(describing: Route.self))] Presenting Sheet: \(typedRoute)")
+            sheet = typedRoute // sets a private var here too.
+            _presentedSheet = typedRoute
+            
+        case .fullscreenCover:
+            guard let typedRoute = route as? Route else {
+                fatalError("Warning: Cannot present fullscreenCover with cross-type route from typed coordinator")
+            }
+            print("[\(String(describing: Route.self))] Presenting FullScreenCover: \(typedRoute)")
+            fullscreenCover = typedRoute // sets a private var here too.
+            _presentedFullScreenCover = typedRoute
+        }
+    }
+    
+    public func goBack(_ type: NavigationBackType = .popStack(last: 1)) {
+        
+        switch type {
+        case .popStack(let count):
+            let actualCount = min(count, localStack.count - 1) // we can only go back to the initial on the stack.
+            if actualCount > 0 {
+                wasProgrammaticallyPopped = true // sets a flag for viewDisappeared
+                path.removeLast(actualCount)
+            }
+            
+        case .popStackTo(let toAnyRoute):
+            guard let typedRoute = toAnyRoute.typedByRoute(as: Route.self) else {
+                fatalError("Misuse.  Read the property description.  You must pass a Route of the same type of this coordinator")
+            }
+            guard let lastIndex = localStack.lastIndex(where: { $0 == typedRoute }) else {
+                print("WARNING: The requested route was not in the stack.  Doing nothing.")
+                return
+            }
+            let numToRemove = max(0, (localStack.count - 1) - lastIndex)
+            wasProgrammaticallyPopped = true // sets a flag for viewDisappeared.
+            path.removeLast(min(numToRemove, path.count))
+            
+            
+        case .unwindToStart(let finishValue):
+            if let parentNode {
+                parentNode.finish(self, result: finishValue ?? defaultFinishValue, userInitiated: false)
+            } else {
+                // essentially resets it.
+                wasProgrammaticallyPopped = true
+                path.removeLast(path.count)
+                sheet = nil
+                fullscreenCover = nil
+            }
+            
+        case .dismissSheet:
+            if sheet == nil {
+                print("[\(String(describing: Route.self))] Warning: You're trying to dismiss a sheet that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
+            }
+            sheet = nil
+            _presentedSheet = nil // this is to indicate it wasn't userInitiated.
+            
+        case .dismissFullScreenCover:
+            if fullscreenCover == nil {
+                print("[\(String(describing: Route.self))] Warning: You're trying to dismiss a fullscreenCover that was already nil.  Were you trying to dismiss your child coordinator that was presented as a sheet?  Use .unwindToStart(...) instead.")
+            }
+            
+            fullscreenCover = nil
+            _presentedFullScreenCover = nil
+        }
     }
     
     // MARK: - Finish Methods
@@ -615,7 +618,6 @@ public class _CoordinatorNode {
     // MARK: - Abstract Methods
     
     func finish(_ child: _CoordinatorNode, result: Any? = nil, userInitiated: Bool = false) {
-        
         fatalError("You need to override this in your subclass.")
     }
 }

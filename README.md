@@ -13,7 +13,7 @@ I've never been satisfied with typical solutions you might see for NavigationCoo
 - You therefore cannot push a child coordinator onto this stack due to type restrictions, despite this being a common use case (you have coordinators for smaller screen flows, which in theory allow re-usability).  Imagine the use case of "drill-down through this folder hierarchy to select a file and once selected, return to the context that triggered this file browsing."  That would all take place on the same navigation stack (or could).
 
 2. Responding to non-programmatic stack changes.
-    - Coordinators often don't cover the navigation of when a user taps a back button or uses the interactivePopGesture that is native to NavigationStack (or UINavigationController) and thus provides no callback.  Sometimes you need that callback in order to do something.
+    - Coordinators often don't cover the navigation of when a user taps a back button or uses the interactivePopGesture that is native to NavigationStack  and thus provides no callback.  Sometimes you need that callback in order to do something.
 
 3. What about dependency injection? Accommdating a MVVM pattern?
 
@@ -32,6 +32,7 @@ This project represents a small learning curve to understand how data is structu
 
 ### How to pass data around
 
+
 The idea is that a View is created and managed by a coordinator.  A View should only talk to its coordinator, and a coordinator manages the state of what's currently visible / presented.  A Coordinator creates and configures a view, and you can use / subclass Coordinators to include mechanisms such as dependency injection.   
 
 If a view is finished (in our examples, we use the idea of "Exits" in a View Model), it notifies its coordinator.  The coordinator is responsible for knowing what to do after that (for example, as a child, pushing a new view, or the coordinator itself can 'finish').
@@ -42,7 +43,7 @@ There is a 'onDefaultExit' view modifier for when you set up your view in the co
 
 A Coordinator manages Routables of the same type.  A Child Coordinator can be created to manage routes of a different type, and compose how they relate to their parent. 
 
-Whenever you create a Child coordinator, it needs a reference to a "proxy route" defined in the parent's Routables.  So that when you push the proxy route, you can use that to build a child coordinator.  This is what the idea "branchedFrom" means.  A 'branchedFrom' in the parent is equivalent to the 'initialRoute' in the child, just with different "Route namespaces".
+Whenever you create a Child coordinator, it needs a reference to a "proxy route" defined in the parent's Routables.  So that when you push the proxy route, you can use that to build a child coordinator.  This is what the idea "branchedFrom" means.  A 'branchedFrom' is a route in the parent and is basically equivalent to the 'initialRoute' in the child, just with different "Route namespaces".  If you pop the branchedFrom from the parent, it will mean the the child coordinator is finished.
 
 
 
@@ -62,10 +63,9 @@ The app is a MVVM-C architecture.  You can see that the Coordinator is essential
 
 - You can see that when a view is built, a ViewModel is created, and supplied to its view.  In the ViewModel, we define "Exits".  The idea is that a View does not want to know anything else about the app's architecture; it exits to accomplish tasks on that view, and when it's finished, it "exits".  (Depending on how it exits, with or without a payload.)
 
+- You can see in the makeView methods that we can specify what the 'defaultExit' will be, in the event the user initiates 'going back', such as back buttons or swipes.  You may need to pass state or do some cleanup in these scenarios.
+
 - Because Coordinator types are classes, you can create subclasses that store values throughout your flow.  So one screen can finish with a value, store it, then move to another screen, etc. then at some point finish.
-
-- You can see in the makeView methods, that we add the 'coordinatedView' modifier to indicate what the 'defaultExit' will be, in the event the user initiates 'going back', such as back buttons or swipes.  You may need to pass state or do some cleanup in these scenarios.
-
 
 
 ### Passing Data between screen flows
