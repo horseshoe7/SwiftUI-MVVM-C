@@ -37,14 +37,10 @@ enum MainRoute: Routable {
                     )
                 )
             )
-            // We add the coordinatedView modifier to ensure the back / swipe to go back can also fire callbacks, if you need them to.
-            .coordinatedView(
-                coordinator: AnyCoordinator(coordinator),
-                route: AnyRoutable(self),
-                defaultExit: {
-                    print("The Home View should never be exited via back or swipe!")
-                }
-            )
+            .onDefaultExit {
+                print("The Home View should never be exited via back or swipe!")
+            }
+            
         case .profile(let userId): // here you want a child coordinator.
             
             //print("Create Child Coordinator")
@@ -62,8 +58,6 @@ enum MainRoute: Routable {
                     }
 
                     print("Returned from User Flow: \(userResult.selectedAction) - \(userResult.userId)")
-                    
-                    
                 }
             )
             
@@ -84,11 +78,9 @@ enum MainRoute: Routable {
                     exits: exits
                 )
             )
-            .coordinatedView(
-                coordinator: AnyCoordinator(coordinator),
-                route: AnyRoutable(self),
-                defaultExit: exits.onFinish
-            )
+            .onDefaultExit {
+                exits.onFinish()
+            }
             
         case .unauthorized:
             UnauthorizedView(
@@ -100,13 +92,9 @@ enum MainRoute: Routable {
                     )
                 )
             )
-            .coordinatedView(
-                coordinator: AnyCoordinator(coordinator),
-                route: AnyRoutable(self),
-                defaultExit: {
-                    print("This view should have no default exit as it becomes a root view.")
-                }
-            )
+            .onDefaultExit {
+                print("This view should have no default exit as it becomes a root view.")
+            }
             
         case .authFlow:
             
@@ -170,13 +158,10 @@ enum UserDetailsRoute: Routable {
                     )
                 )
             )
-            .coordinatedView(
-                coordinator: AnyCoordinator(coordinator),
-                route: AnyRoutable(self),
-                defaultExit: {
-                    exits.onFinish(true)
-                }
-            )
+            .onDefaultExit {
+                exits.onFinish(true)
+            }
+            
         case .editProfile(let userId):
             let exits = EditUserView.ViewModel.NavigationExits(
                 onFinish: { userInitiated in
@@ -195,11 +180,9 @@ enum UserDetailsRoute: Routable {
             )
                 
             EditUserView(viewModel: .init(exits: exits, dependencies: .init(userId: userId)))
-                .coordinatedView(
-                    coordinator: AnyCoordinator(coordinator),
-                    route: AnyRoutable(self),
-                    defaultExit: { exits.onFinish(true) }
-                )
+                .onDefaultExit {
+                    exits.onFinish(true)
+                }
         }
     }
 }
@@ -225,11 +208,6 @@ enum AuthRoutes: Routable {
                     userPromptName: coordinator.userData["userPrompt"] as? String // ...and then retrieved in later screens
                 )
             )
-        )
-        .coordinatedView(
-            coordinator: AnyCoordinator(coordinator),
-            route: AnyRoutable(self),
-            defaultExit: nil
         )
     }
 }

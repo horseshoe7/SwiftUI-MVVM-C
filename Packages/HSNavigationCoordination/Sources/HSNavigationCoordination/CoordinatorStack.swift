@@ -16,15 +16,35 @@ public struct CoordinatorStack<Route: Routable>: View {
         @Bindable var coordinator = coordinator
         
         NavigationStack(path: $coordinator.path) {
-            coordinator.initialRoute.makeView(with: coordinator, presentationStyle: .push)
+            CoordinatedView(
+                coordinator: AnyCoordinator(coordinator),
+                route: AnyRoutable(coordinator.initialRoute)
+            ) {
+                coordinator.initialRoute.makeView(with: coordinator, presentationStyle: .push)
+            }
             .navigationDestination(for: Route.self) { route in
-                route.makeView(with: coordinator, presentationStyle: .push)
+                CoordinatedView(
+                    coordinator: AnyCoordinator(coordinator),
+                    route: AnyRoutable(route)
+                ) {
+                    route.makeView(with: coordinator, presentationStyle: .push)
+                }
             }
             .sheet(item: $coordinator.sheet) { route in
-                route.makeView(with: coordinator, presentationStyle: .sheet)
+                CoordinatedView(
+                    coordinator: AnyCoordinator(coordinator),
+                    route: AnyRoutable(route)
+                ) {
+                    route.makeView(with: coordinator, presentationStyle: .sheet)
+                }
             }
             .fullScreenCover(item: $coordinator.fullscreenCover) { route in
-                route.makeView(with: coordinator, presentationStyle: .fullscreenCover)
+                CoordinatedView(
+                    coordinator: AnyCoordinator(coordinator),
+                    route: AnyRoutable(route)
+                ) {
+                    route.makeView(with: coordinator, presentationStyle: .fullscreenCover)
+                }
             }
         }
     }
@@ -42,15 +62,35 @@ public struct ChildCoordinatorStack<Route: Routable>: View {
     public var body: some View {
         @Bindable var coordinator = coordinator
         
-        coordinator.initialRoute.makeView(with: coordinator, presentationStyle: .push)
+        CoordinatedView(
+            coordinator: AnyCoordinator(coordinator),
+            route: AnyRoutable(coordinator.initialRoute)
+        ) {
+            coordinator.initialRoute.makeView(with: coordinator, presentationStyle: .push)
+        }
             .navigationDestination(for: Route.self) { route in
-                route.makeView(with: coordinator, presentationStyle: .push)
+                CoordinatedView(
+                    coordinator: AnyCoordinator(coordinator),
+                    route: AnyRoutable(route)
+                ) {
+                    route.makeView(with: coordinator, presentationStyle: .push)
+                }
             }
             .sheet(item: $coordinator.sheet) { route in
-                route.makeView(with: coordinator, presentationStyle: .sheet)
+                CoordinatedView(
+                    coordinator: AnyCoordinator(coordinator),
+                    route: AnyRoutable(route)
+                ) {
+                    route.makeView(with: coordinator, presentationStyle: .sheet)
+                }
             }
             .fullScreenCover(item: $coordinator.fullscreenCover) { route in
-                route.makeView(with: coordinator, presentationStyle: .fullscreenCover)
+                CoordinatedView(
+                    coordinator: AnyCoordinator(coordinator),
+                    route: AnyRoutable(route)
+                ) {
+                    route.makeView(with: coordinator, presentationStyle: .fullscreenCover)
+                }
             }
     }
 }
@@ -76,7 +116,7 @@ public struct CoordinatedView<Content: View>: View {
     private let coordinator: AnyCoordinator
     private let content: () -> Content
     private let route: AnyRoutable
-    private let defaultExit: (() -> Void)?
+    @State private var defaultExit: (() -> Void) = {}
     
     public init(
         coordinator: AnyCoordinator,
@@ -86,7 +126,6 @@ public struct CoordinatedView<Content: View>: View {
     ) {
         self.coordinator = coordinator
         self.content = content
-        self.defaultExit = defaultExit
         self.route = route
     }
     
@@ -96,6 +135,12 @@ public struct CoordinatedView<Content: View>: View {
             .onDisappear {
                 coordinator.viewDisappeared(route: route, defaultExit: defaultExit)
             }
+            .onPreferenceChange(
+                DefaultExitPreference.self,
+                perform: {
+                    self.defaultExit = $0.action
+                }
+            )
     }
 }
 
@@ -112,4 +157,45 @@ public extension View {
             self
         }
     }
+}
+
+public extension View {
+    func onDefaultExit(_ action: @escaping () -> Void) -> some View {
+        self
+            .modifier(DefaultExitBehaviourModifier(defaultExitAction: .init(action: action)))
+    }
+}
+
+struct ActionContainer: Equatable {
+    
+    nonisolated(unsafe) static let emptyAction = ActionContainer(action: {})
+    let id = UUID()
+    
+    let action: () -> Void
+    
+    static func == (lhs: ActionContainer, rhs: ActionContainer) -> Bool {
+        return lhs.id == rhs.id // no two blocks are identical.  Any time you set one, it's "new"
+    }
+}
+
+
+struct DefaultExitBehaviourModifier: ViewModifier {
+    
+    let defaultExitAction: ActionContainer
+
+    func body(content: Content) -> some View {
+        content
+            .preference(
+                key: DefaultExitPreference.self,
+                value: defaultExitAction
+            )
+    }
+}
+
+struct DefaultExitPreference: PreferenceKey {
+    static func reduce(value: inout ActionContainer, nextValue: () -> ActionContainer) {
+        value = nextValue()
+    }
+    
+    nonisolated(unsafe) static let defaultValue: ActionContainer = .emptyAction
 }
