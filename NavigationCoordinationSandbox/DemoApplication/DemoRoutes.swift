@@ -62,6 +62,8 @@ enum MainRoute: Routable {
                     }
 
                     print("Returned from User Flow: \(userResult.selectedAction) - \(userResult.userId)")
+                    
+                    
                 }
             )
             
@@ -184,7 +186,10 @@ enum UserDetailsRoute: Routable {
                     print("Went back from EditUserView")
                 },
                 onSavedUser: { userId in
+                    // this is actually incorrect; a child can only unwind to it's start, which is the .userDetail
                     print("Saved User; Should pop back to Home Screen.")
+                    
+                    // this is unwinding to the start of the coordinator, where it should be unwinding to the parent that spawned it.
                     coordinator.goBack(.unwindToStart(finishValue: UserDetailResult(selectedAction: "Saved", userId: userId)))
                 }
             )

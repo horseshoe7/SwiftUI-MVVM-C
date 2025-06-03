@@ -100,7 +100,7 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
                 print("WARNING: The requested route was not in the stack.  Doing nothing.")
                 return
             }
-            let numToRemove = max(0, localStack.count - lastIndex)
+            let numToRemove = max(0, (localStack.count - 1) - lastIndex)
             wasProgrammaticallyPopped = true // sets a flag for viewDisappeared.
             path.removeLast(min(numToRemove, path.count))
             
@@ -380,10 +380,18 @@ public class Coordinator<Route: Routable>: _CoordinatorNode, CoordinatorProtocol
         }
         
         if self.sharedPath.routes.contains(where: { $0 == branchedFrom }) {
-            self.goBack(.popStackTo(branchedFrom))
-            if self.sharedPath.path.count > 0 {
-                self.goBack(.popStack(last: 1))
+            // we're finishing a child, so we want to pop to the one before branchedFrom
+            
+            wasProgrammaticallyPopped = true // sets a flag for viewDisappeared
+            
+            if let index = self.sharedPath.routes.firstIndex(of: branchedFrom) {
+                let popToIndex = index - 1
+                self.path.removeLast(min(self.path.count, self.path.count - (popToIndex + 1)))
+            } else {
+                self.path.removeLast(self.path.count)
             }
+            
+            
             childCoordinator.finish(with: result)
             return
         }
