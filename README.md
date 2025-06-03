@@ -9,6 +9,7 @@ I've never been satisfied with typical solutions you might see for NavigationCoo
 1. Strong typing that forces a flat hierarchy of routes.
 - A Coordinator will manage Routes that are often typed to one single enum; thus you have one large hierarchy.
 - A Coordinator is designed for one NavigationStack containing routes of the above type.
+    - This often means you have to create a large set of routes for whatever you want to push onto a common NavigationStack, which breaks the principle of separation of concerns.
 - You therefore cannot push a child coordinator onto this stack due to type restrictions, despite this being a common use case (you have coordinators for smaller screen flows, which in theory allow re-usability).  Imagine the use case of "drill-down through this folder hierarchy to select a file and once selected, return to the context that triggered this file browsing."  That would all take place on the same navigation stack (or could).
 
 2. Responding to non-programmatic stack changes.
@@ -22,8 +23,27 @@ As a result, for some years I have been using SwiftUI to make "screen level" vie
 ## Features
 
 - Allows for multiple flows working on one NavigationStack
-- Provides a mechanism for callbacks when a view is dismissed 'non-programmatically' such as a Back button or a InteractivePopGesture (on a navigation stack).
+- Provides a mechanism for callbacks when a view is dismissed 'non-programmatically' such as a Back button or a InteractivePopGesture (on a navigation stack). (known as a 'defaultExit')
 - Allows for deeper customization of Coordinator types, but also makes it easy to pass data from Screen to Coordinator.
+
+## Concepts
+
+This project represents a small learning curve to understand how data is structured.
+
+### How to pass data around
+
+The idea is that a View is created and managed by a coordinator.  A View should only talk to its coordinator, and a coordinator manages the state of what's currently visible / presented.  A Coordinator creates and configures a view, and you can use / subclass Coordinators to include mechanisms such as dependency injection.   
+
+If a view is finished (in our examples, we use the idea of "Exits" in a View Model), it notifies its coordinator.  The coordinator is responsible for knowing what to do after that (for example, as a child, pushing a new view, or the coordinator itself can 'finish').
+
+a 'defaultExit' is a callback that you can provide for situations where you otherwise cannot control navigation programmatically, such as when a user taps a back button, swipes to go back, or swipes a sheet down to dismiss it.  In this case, you have the opportunity to provide a callback in this scenario.
+
+There is a 'onDefaultExit' view modifier for when you set up your view in the coordinator.
+
+A Coordinator manages Routables of the same type.  A Child Coordinator can be created to manage routes of a different type, and compose how they relate to their parent. 
+
+Whenever you create a Child coordinator, it needs a reference to a "proxy route" defined in the parent's Routables.  So that when you push the proxy route, you can use that to build a child coordinator.  This is what the idea "branchedFrom" means.  A 'branchedFrom' in the parent is equivalent to the 'initialRoute' in the child, just with different "Route namespaces".
+
 
 
 ## Usage
@@ -71,14 +91,6 @@ See the TODO Items below if you want to get involved in the discussion, or just 
 It is perhaps a bit to unpack at the beginning, but this is the first solution to my Coordinator requirements that I've been able to adequately solve with SwiftUI.  Up until now, I've been building UIKit apps that use UIHostingControllers for screens built with SwiftUI.
 
 
-## TODO
- 
-- Discussion: There are still some brittle aspects to this:
-        
-    - I'd ideally like to hide the addition of .coordinatedView in the makeView methods, but to ideally provide the defaultExit to that modifier in a makeView method?  (use ViewPreferencesKeys?  Pass it back up to the parent?)
-    
-    - currently the finish handler doesn't fire when a sheet is dismissed by the user (via a swipe down)
-
 
 ## Acknowledgements
 
@@ -87,22 +99,4 @@ Thank you to Tiago Henriques and his [blog post on the topic ](https://www.tiago
 ## LICENSE
 
 MIT.  Or Beerware if you prefer.  Yes, buy me a beer and don't send any lawyers after me.
-
-
-### New Draft
-
-# Concepts
-
-How to pass data around.
-
-The idea is that a View is created and managed by a coordinator.  A View should only talk to its coordinator.  A Coordinator creates and configures a view.  
-
-If a view is finished, it notifies its coordinator.  The coordinator is responsible for knowing what to do after that (for example, as a child, pushing a new view, or the coordinator itself can 'finish').
-
-a 'defaultExit' is a callback that you can provide for situations where you otherwise cannot control navigation programmatically, such as when a user taps a back button, swipes to go back, or swipes a sheet down to dismiss it.  In this case, you have the opportunity to provide a callback in this scenario.
-
-A Coordinator manages Routables of the same type.  A Child Coordinator can be created to manage routes of a different type, and compose how they relate to their parent. 
-
-Whenever you create a Child coordinator, it needs a reference to a "proxy route" defined in the parent's Routables.  So that when you push the proxy route, you can use that to build a child coordinator.
-
 
